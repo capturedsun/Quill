@@ -4,7 +4,7 @@ export function addStyle(cssString) {
     document.adoptedStyleSheets = [...document.adoptedStyleSheets, stylesheet];
   }
   
-export function create(elementString) {
+export function html(elementString) {
     let parser = new DOMParser();
     let doc = parser.parseFromString(elementString, 'text/html');
     return doc.body.firstChild;

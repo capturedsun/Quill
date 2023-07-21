@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <style>
+        .className {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <script>
+        /**
+            source.css
+            meta.embedded.block.html
+            text.html.derivative
+        */
+        let variable = /*html*/ `
+            <div attr="${test}asd${test}">Test</div>${Window}
+        `
+
+        variable = /*css*/`
+        .className {
+            color: red;
+        }
+        `
+
+        variable = /*html*/`<div attr="asdasd">Test</div>${window}`
+
+        variable = //html
+        `
+        <div>Test</div>${Window}
+        `
+
+        variable = /*html*/ 
+        `
+        <div>Test</div>${Window}
+        `
+
+        const fn = (param) => param;
+        const html = (param) => html`<div>Something</div>`
+        fn(//html
+        `<div>Something</div>${window}`
+        )
+        fn(html`<div>OK</div>`)
+
+        variable = /*svg*/`<text x="${test}0" y="0">${elmnt.txt}</text>`
+
+        variable = /*SVG*/`
+        <svg viewBox="0 0 100 100">
+            ${myArray.reduce((html, elmnt) => html + /*svg*/`<text x="${test}0" y="0">${elmnt.txt}</text>`, '')}
+        </svg>`
+
+        variable = /*sql*/`SELECT * FROM \`table\` WHERE 1=1`
+
+        variable = /*sql*/
+        `
+        SELECT -- must have whitespace [\s ] after --
+            *,
+            --123, -- double negative is positive!
+        FROM table--syntax error in mysql
+        `
+
+        variable = /*sql*/
+        `
+        SELECT * FROM ${table}
+        WHERE \`test\` NOT BETWEEN 'Carnarvon Tigers' AND 'Mozzarella di Giovanni'
+        ORDER BY ProductName;
+        `
+        
+        variable = /*XML*/
+        `
+        <?xml version="1.0" encoding="UTF-8"?>
+        <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+        <url>
+            <loc>http://www.example.com/</loc>
+        </url>
+        </urlset> 
+        `
+    </script>
+</body>
+</html>

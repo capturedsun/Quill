@@ -1,7 +1,3 @@
-import * as dom from './dom.js';
-window.dom = {};
-Object.entries(dom).forEach(([name, exported]) => window.dom[name] = exported);
-
 class Index extends HTMLElement {
 
     css = /*css*/ `
@@ -15,7 +11,7 @@ class Index extends HTMLElement {
     constructor() {
         super();
         
-        dom.addStyle(this.css);
+        addStyle(this.css);
         this.innerHTML = this.html;
     }
 
