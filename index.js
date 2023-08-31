@@ -1,7 +1,9 @@
 class Index extends HTMLElement {
 
     css = /*css*/ `
+        index-el {
 
+        }
     `
 
     html = /*html*/ `
