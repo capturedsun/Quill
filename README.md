@@ -1,1 +1,0 @@
-PAT for MS Azure: o3tl54vtwzuvahiyu7j6qnkc2fc24dpixr4htycb3dgwwxrijamq
