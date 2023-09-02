@@ -1,4 +1,9 @@
-# <img src="VSCode/docs/Quill.png" alt="drawing" width="100"/> Quill
+
+<p align="center">
+<img src="VSCode/docs/Quill.png" alt="drawing" width="100"/> 
+<h1 align="center">Quill</h1>
+</p>
+<br>
 
 Usage: Install the VSCode extension "Quill".
 
