@@ -2,7 +2,7 @@
 	"name": "quill",
 	"displayName": "Quill",
 	"description": "HTML/CSS Syntax highlighting, best used with the Quill framework",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"publisher": "capturedsun",
 	"icon": "docs/Quill.png",
 	"engines": {
@@ -51,7 +51,11 @@
 		"snippets": [
 			{
 				"language": "javascript",
-				"path": "./snippets.json"
+				"path": "./snippets-js.json"
+			},
+			{
+				"language": "html",
+				"path": "./snippets-html.json"
 			}
 		],
 		"grammars": [
