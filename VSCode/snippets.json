@@ -1,0 +1,71 @@
+{
+	"html": {
+		"prefix": "html",
+		"body": [
+			"html(`$1`);"
+		],
+		"description": "Create a DOM node"
+	},
+
+	"dom": {
+		"prefix": "dom",
+		"body": [
+			"dom;"
+		],
+		"description": "Use the DOM collection of functions"
+	},
+
+	"*element": {
+		"prefix": "*element",
+		"body": [
+			"class Index extends HTMLElement {",
+			"",
+			"    css = /*css*/ `",
+			"        index-el {",
+			"            ",
+			"        }",
+			"    `",
+			"",
+			"    html = /*html*/ `",
+			"    `",
+			"",
+			"    constructor() {",
+			"        super();",
+			"        quill.addStyle(this.css);",
+			"        this.innerHTML = this.html;",
+			"    }",
+			"",
+			"    connectedCallback() {",
+			"    }",
+			"",
+			"}",
+			"",
+			"customElements.define('index-el', Index);",
+			"export default Index;"
+		],
+		"description": "Custom Element Template"
+	},
+
+	"*page": {
+		"prefix": "*page",
+		"body": [
+			"<!DOCTYPE html>",
+			"<html lang=\"en\">",
+			"  <head>",
+			"    <title>Index</title>",
+			"    <script type=\"module\">",
+			"      import * as quill from './Quill/quill.js';",
+			"      window.quill = {};",
+			"      Object.entries(quill).forEach(([name, exported]) => window[name] = exported);",
+			"    </script>",
+			"    <script type=\"module\" src=\"index.js\"></script>",
+			"  </head>",
+			"  <body>",
+			"",
+			"",
+			"  </body>",
+			"</html>"
+		],
+		"description": "Use the DOM collection of functions"
+	}
+}

@@ -2,7 +2,7 @@
 	"name": "quill",
 	"displayName": "Quill",
 	"description": "HTML/CSS Syntax highlighting, best used with the Quill framework",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"publisher": "capturedsun",
 	"icon": "docs/Quill.png",
 	"engines": {
@@ -46,6 +46,12 @@
 				"command": "quill.insertTemplate",
 				"title": "Insert es6-string-html template",
 				"category": "HTML"
+			}
+		],
+		"snippets": [
+			{
+				"language": "javascript",
+				"path": "./snippets.json"
 			}
 		],
 		"grammars": [
