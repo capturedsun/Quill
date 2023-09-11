@@ -1,28 +1,22 @@
 export function addStyle(cssString) {
-  if(quill.detectMobile() || quill.getSafariVersion() < 16.4) {
-      let container = document.querySelector("style#quillStyles");
-      if(!container) {
-          container = document.createElement('style');
-          container.id = "quillStyles";
-          document.head.appendChild(container);
-      }
+    let container = document.querySelector("style#quillStyles");
+    if(!container) {
+        container = document.createElement('style');
+        container.id = "quillStyles";
+        document.head.appendChild(container);
+    }
 
-      let primarySelector = cssString.substring(0, cssString.indexOf("{")).trim();
-      primarySelector = primarySelector.replace(/\*/g, "all");
-      let stylesheet = container.querySelector(`:scope > style#${primarySelector}`)
-      if(!stylesheet) {
-          stylesheet = document.createElement('style');
-          stylesheet.id = primarySelector;
-          stylesheet.appendChild(document.createTextNode(cssString));
-          container.appendChild(stylesheet);
-      } else {
-          stylesheet.innerText = cssString
-      }
-      return;
-  }
-  let stylesheet = new CSSStyleSheet();
-  stylesheet.replaceSync(cssString)
-  document.adoptedStyleSheets = [...document.adoptedStyleSheets, stylesheet];
+    let primarySelector = cssString.substring(0, cssString.indexOf("{")).trim();
+    primarySelector = primarySelector.replace(/\*/g, "all");
+    let stylesheet = container.querySelector(`:scope > style#${primarySelector}`)
+    if(!stylesheet) {
+        stylesheet = document.createElement('style');
+        stylesheet.id = primarySelector;
+        stylesheet.appendChild(document.createTextNode(cssString));
+        container.appendChild(stylesheet);
+    } else {
+        stylesheet.innerText = cssString
+    }
 }
 
 export function createElement(elementString) {
