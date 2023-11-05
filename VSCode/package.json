@@ -2,7 +2,7 @@
 	"name": "quill",
 	"displayName": "Quill",
 	"description": "HTML/CSS Syntax highlighting, best used with the Quill framework",
-	"version": "1.0.3",
+	"version": "1.0.4",
 	"publisher": "capturedsun",
 	"icon": "docs/Quill.png",
 	"engines": {
