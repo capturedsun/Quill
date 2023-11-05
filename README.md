@@ -14,5 +14,5 @@ Usage: Install the VSCode extension "Quill".
 ## Functions: 
 Clone this repository into the top level of the project you are working on, so the HTML can find the "quill.js" functions.
 Use backticks with both to get HTML and CSS syntax highlighting.
-- ```addStyle```: Adds a style to a Quill style tag in the head.
-- ```html```: Creates a parsed HTML element (which is not yet in the DOM)
+- ```css() or addStyle()```: Adds a style to a Quill style tag in the head.
+- ```html()```: Creates a parsed HTML element (which is not yet in the DOM)
