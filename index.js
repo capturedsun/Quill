@@ -1,28 +1,77 @@
-class Index extends HTMLElement {
+window.css = function css(cssString) {
+  let container = document.querySelector("style#quillStyles");
+  if(!container) {
+      container = document.createElement('style');
+      container.id = "quillStyles";
+      document.head.appendChild(container);
+  }
 
-    css = /*css*/ `
-        index-el {
-
-        }
-    `
-
-    html = /*html*/ `
-
-    `
-
-    constructor() {
-        super();
-        
-        addStyle(this.css);
-        this.innerHTML = this.html;
-    }
-
-    connectedCallback() {
-
-    }
-
+  let primarySelector = cssString.substring(0, cssString.indexOf("{")).trim();
+  primarySelector = primarySelector.replace(/\*/g, "all");
+  primarySelector = primarySelector.replace(/#/g, "id-");
+  primarySelector = primarySelector.replace(/,/g, "");
+  let stylesheet = container.querySelector(`:scope > style[id='${primarySelector}']`)
+  if(!stylesheet) {
+      stylesheet = document.createElement('style');
+      stylesheet.id = primarySelector;
+      stylesheet.appendChild(document.createTextNode(cssString));
+      container.appendChild(stylesheet);
+  } else {
+      stylesheet.innerText = cssString
+  }
 }
 
-customElements.define('index-el', Index);
-export default Index;
+window.html = function html(elementString) {
+  let parser = new DOMParser();
+  let doc = parser.parseFromString(elementString, 'text/html');
+  return doc.body.firstChild;
+}
 
+function trailingSlash(url) {
+  return url.endsWith("/") ? url : url+"/";
+}
+function noTrailingSlash(url) {
+  return url.endsWith("/") ? url.substring(0, url.length-1) : url;
+}
+
+let oldPushState = history.pushState;
+history.pushState = function pushState() {
+  let ret = oldPushState.apply(this, arguments);
+  window.dispatchEvent(new Event('pushstate'));
+  window.dispatchEvent(new Event('locationchange'));
+  return ret;
+};
+window.addEventListener('popstate', () => {
+  window.dispatchEvent(new Event('locationchange'));
+});
+
+window.addEventListener('locationchange', locationChange);
+let urlBeforeChange = window.location.href;
+
+window.navigateTo = function(url) {
+  window.history.pushState({}, '', url);
+}
+
+function locationChange() {
+  let URL = window.location.pathname.split("/").filter(d => (d !== 'Web') && (d !== 'index.html')).join("/")
+  if(URL === "") URL = "/"
+  console.log(URL)
+  console.log(document.body.children[0])
+  document.body.children[0].replaceWith(new window.routes[URL]())
+  urlBeforeChange = window.location.href;
+}
+
+function detectMobile() {
+  const mobileDeviceRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
+  return mobileDeviceRegex.test(navigator.userAgent);
+}
+
+function getSafariVersion() {
+  const userAgent = navigator.userAgent;
+  const isSafari = userAgent.includes("Safari") && !userAgent.includes("Chrome");
+  if (isSafari) {
+    const safariVersionMatch = userAgent.match(/Version\/(\d+\.\d+)/);
+    const safariVersion = safariVersionMatch ? parseFloat(safariVersionMatch[1]) : null;
+    return safariVersion;
+  }
+}

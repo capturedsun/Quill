@@ -4,37 +4,21 @@
     <title>Quill</title>
     <link rel="icon" href="">
     <link rel="stylesheet" href="">
+    <script src=""></script>
+    <script type="module" src="https://server.parchment.page/quill.js"></script>
     <script type="module">
-      window.addStyle = function addStyle(cssString) {
-        let container = document.querySelector("style#quillStyles");
-        if(!container) {
-            container = document.createElement('style');
-            container.id = "quillStyles";
-            document.head.appendChild(container);
-        }
+      /* EXAMPLE IMPORTS
+      import President from "./Web/President/President.js";
+      import RepublicanPrimaries from "./Web/President/RepublicanPrimaries.js";
+      import MyRepresentatives from "./Web/myRepresentatives/MyRepresentatives.js";
+      */
 
-        let primarySelector = cssString.substring(0, cssString.indexOf("{")).trim();
-        primarySelector = primarySelector.replace(/\*/g, "all");
-        primarySelector = primarySelector.replace(/#/g, "id-");
-        primarySelector = primarySelector.replace(/,/g, "");
-        let stylesheet = container.querySelector(`:scope > style[id='${primarySelector}']`)
-        if(!stylesheet) {
-            stylesheet = document.createElement('style');
-            stylesheet.id = primarySelector;
-            stylesheet.appendChild(document.createTextNode(cssString));
-            container.appendChild(stylesheet);
-        } else {
-            stylesheet.innerText = cssString
-        }
-      }
-      
-      window.html = function html(elementString) {
-          let parser = new DOMParser();
-          let doc = parser.parseFromString(elementString, 'text/html');
-          return doc.body.firstChild;
+      window.routes = {  // Replace with your imported objects, delete empty strings
+          "/": /*President*/"",
+          "/exampleone": /*RepublicanPrimaries*/"",
+          "/exampletwo/examplethree": /*MyRepresentatives*/""
       }
     </script>
-    <script type="module" src=""></script>
   </head>
   <body>
 
