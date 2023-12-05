@@ -71,10 +71,8 @@ Object.defineProperty(window, 'routes', {
 });
 function locationChange() {
     console.log("location change")
-    let URL = window.location.pathname.split("/").filter(d => (d !== 'Web') && (d !== 'index.html')).join("/")
+    let URL = window.location.pathname.split("/").filter(d => (d !== 'Web') && (!d.includes('.html'))).join("/")
     if(URL === "") URL = "/"
-    console.log(URL)
-    console.log(document.body.children[0])
     let wrapper = document.querySelector("#wrapper");
     if(wrapper) {
         wrapper.replaceWith(new window.routes[URL]())
