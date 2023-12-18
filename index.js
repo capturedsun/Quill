@@ -1,3 +1,15 @@
+HTMLElement.prototype.$ = function(query){
+    return this.querySelectorAll(query)
+}
+window.$ = function(selector) {
+    let query = document.querySelectorAll(selector);
+    if(selector[0] === "#") {
+        return query[0];
+    } else {
+        return query;
+    }
+}
+
 window.css = function css(cssString) {
     let container = document.querySelector("style#quillStyles");
     if(!container) {
