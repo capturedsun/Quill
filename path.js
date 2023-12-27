@@ -1,6 +1,6 @@
 class PathProcessor {
     path;
-    trailingSlash = false;
+    hasTrailingSlash = false;
     node = (typeof module !== 'undefined' && module.exports) ? true : false;
 
     constructor(path) {
@@ -59,7 +59,7 @@ class PathProcessor {
     
     trailingSlash() {
         this.path = this.path.endsWith("/") ? this.path : this.path+"/";
-        this.trailingSlash = true;
+        this.hasTrailingSlash = true;
         return this;
     }
     
@@ -92,7 +92,7 @@ class PathProcessor {
     }
 
     build() {
-        return this.trailingSlash ? this.path : this.#removeTrailingSlash(this.path)
+        return this.hasTrailingSlash ? this.path : this.#removeTrailingSlash(this.path)
     }
 }
 
