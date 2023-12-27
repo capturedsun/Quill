@@ -1,6 +1,9 @@
 HTMLElement.prototype.$ = function(query){
     return this.querySelectorAll(query)
 }
+HTMLElement.prototype.addAttribute = function(name) {
+    this.setAttribute(name, "")
+}
 window.$ = function(selector) {
     let query = document.querySelectorAll(selector);
     if(selector[0] === "#") {
