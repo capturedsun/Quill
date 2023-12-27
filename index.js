@@ -36,7 +36,16 @@ window.css = function css(cssString) {
 window.html = function html(elementString) {
     let parser = new DOMParser();
     let doc = parser.parseFromString(elementString, 'text/html');
-    return doc.body.firstChild;
+    let parsedElements = Array.from(doc.body.children);
+    if(parsedElements.length === 1) {
+        return parsedElements[0]
+    } else {
+        let fragment = document.createDocumentFragment();
+        parsedElements.forEach(node => {
+        fragment.appendChild(node);
+        });
+        return fragment;
+    }
 }
   
 function trailingSlash(url) {
