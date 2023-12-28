@@ -137,3 +137,5 @@ export default class Path {
         return new PathProcessor(null).join(...segments);
     }
 }
+
+window.Path = Path;

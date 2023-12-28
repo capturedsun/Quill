@@ -1,16 +1,18 @@
-HTMLElement.prototype.$ = function(query){
-    return this.querySelectorAll(query)
+HTMLElement.prototype.$ = function(selector) {
+    return window.$(selector, this)
+}
+DocumentFragment.prototype.$ = function(selector) {
+    return window.$(selector, this)
+}
+window.$ = function(selector, el = document) {
+    if(selector[0] === "#" || selector.includes("[name")) {
+        return el.querySelector(selector)
+    } else {
+        return el.querySelectorAll(selector);
+    }
 }
 HTMLElement.prototype.addAttribute = function(name) {
     this.setAttribute(name, "")
-}
-window.$ = function(selector) {
-    let query = document.querySelectorAll(selector);
-    if(selector[0] === "#") {
-        return query[0];
-    } else {
-        return query;
-    }
 }
 
 window.css = function css(cssString) {
@@ -35,79 +37,25 @@ window.css = function css(cssString) {
         stylesheet.innerText = cssString
     }
 }
-  
-window.html = function html(elementString) {
-    let parser = new DOMParser();
-    let doc = parser.parseFromString(elementString, 'text/html');
-    let parsedElements = Array.from(doc.body.children);
-    if(parsedElements.length === 1) {
-        return parsedElements[0]
-    } else {
-        let fragment = document.createDocumentFragment();
-        parsedElements.forEach(node => {
-        fragment.appendChild(node);
-        });
-        return fragment;
+
+window.html = function html(htmlString) {
+    let container = document.createElement('div');
+    container.innerHTML = htmlString;
+
+    // If there's only one child, return it directly
+    if (container.children.length === 1) {
+        return container.children[0];
     }
-}
-  
-function trailingSlash(url) {
-    return url.endsWith("/") ? url : url+"/";
-}
-function noTrailingSlash(url) {
-    return url.endsWith("/") ? url.substring(0, url.length-1) : url;
-}
-  
-let oldPushState = history.pushState;
-history.pushState = function pushState() {
-    let ret = oldPushState.apply(this, arguments);
-    window.dispatchEvent(new Event('pushstate'));
-    window.dispatchEvent(new Event('locationchange'));
-    return ret;
+
+    // If there are multiple children, use a DocumentFragment
+    let fragment = document.createDocumentFragment();
+    while (container.firstChild) {
+        fragment.appendChild(container.firstChild);
+    }
+
+    return fragment;
 };
-window.addEventListener('popstate', () => {
-    window.dispatchEvent(new Event('locationchange'));
-});
-  
-window.addEventListener('locationchange', locationChange);
-let urlBeforeChange = window.location.href;
-  
-window.navigateTo = function(url) {
-    window.history.pushState({}, '', url);
-}
 
-Object.defineProperty(window, 'routes', {
-    configurable: true,
-    enumerable: true,
-    set: function(newValue) {
-      Object.defineProperty(window, 'routes', {
-        value: newValue,
-        writable: false,
-        configurable: false,
-        enumerable: true
-      });
-  
-      locationChange();
-    },
-    get: function() {
-      return window.routes;
-    }
-});
-function locationChange() {
-    console.log("location change")
-    let URL = window.location.pathname.split("/").filter(d => (d !== 'Web') && (!d.includes('.html'))).join("/")
-    if(URL === "") URL = "/"
-    let wrapper = document.querySelector("#wrapper");
-    if(wrapper) {
-        wrapper.replaceWith(new window.routes[URL]())
-    } else {
-        document.body.prepend(new window.routes[URL]())
-        document.body.children[0].id = "wrapper"
-    }
-    urlBeforeChange = window.location.href;
-}
-
-  
 function detectMobile() {
     const mobileDeviceRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
     return mobileDeviceRegex.test(navigator.userAgent);
