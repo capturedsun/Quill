@@ -136,6 +136,12 @@ export default class Path {
     static join(...segments) {
         return new PathProcessor(null).join(...segments);
     }
+
+    static homedir() {
+        if(typeof module === 'undefined' || !module.exports) return;
+        const os = require('os')
+        return os.homedir().replace(/\\/g, '/').replace(/^[a-zA-Z]:/, '');
+    }
 }
 
 window.Path = Path;
