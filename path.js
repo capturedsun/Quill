@@ -16,9 +16,9 @@ class PathProcessor {
 
     full() {
         if(!this.node) return;
-        const os = require('os')
-        const paths = require('path')
-        this.path = paths.join(os.homedir(), this.path)
+        let path = this.path;
+        this.path = ""
+        this.join(Path.homedir(), path)
         return this;
     }
 
@@ -140,7 +140,8 @@ export default class Path {
     static homedir() {
         if(typeof module === 'undefined' || !module.exports) return;
         const os = require('os')
-        return os.homedir().replace(/\\/g, '/').replace(/^[a-zA-Z]:/, '');
+        let ret = os.homedir().replace(/\\/g, '/').replace(/^[a-zA-Z]:/, '');
+        return ret
     }
 }
 
