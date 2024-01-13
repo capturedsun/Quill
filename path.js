@@ -5,6 +5,9 @@ class PathProcessor {
 
     constructor(path) {
         this.path = path;
+        if(path === undefined) {
+            this.path = ""
+        }
     }
 
     #removeTrailingSlash(path) {
