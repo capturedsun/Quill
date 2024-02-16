@@ -40,6 +40,7 @@ function locationChange() {
     let wrapper = document.querySelector("#wrapper");
     if(wrapper) {
         wrapper.replaceWith(new window.routes[URL]())
+        document.body.children[0].id = "wrapper"
     } else {
         document.body.prepend(new window.routes[URL]())
         document.body.children[0].id = "wrapper"
