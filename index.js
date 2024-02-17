@@ -15,6 +15,27 @@ HTMLElement.prototype.addAttribute = function(name) {
     this.setAttribute(name, "")
 }
 
+HTMLElement.prototype.ownHTML = function() {
+    return this.startingTag() + this.endingTag()
+}
+
+HTMLElement.prototype.startingTag = function() {
+    const tag = this.tagName.toLowerCase();
+    let html = `<${tag}`;
+
+    for (const attr of this.attributes) {
+        html += ` ${attr.name}="${attr.value}"`;
+    }
+
+    html += `>`;
+    return html;
+}
+
+HTMLElement.prototype.endingTag = function() {
+    const tag = this.tagName.toLowerCase();
+    return `</${tag}>`;
+}
+
 window.css = function css(cssString) {
     let container = document.querySelector("style#quillStyles");
     if(!container) {
