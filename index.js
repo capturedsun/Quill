@@ -1,3 +1,5 @@
+/* $() */
+
 HTMLElement.prototype.$ = function(selector) {
     return window.$(selector, this)
 }
@@ -11,6 +13,108 @@ window.$ = function(selector, el = document) {
         return el.querySelectorAll(selector);
     }
 }
+
+/* REGISTER */
+
+window.registerElement = (el, tagname) => {
+    const randomClassName = 'Custom' + Math.random().toString(36).substring(2, 7);
+    const DynamicClass = {[randomClassName]: class extends el {}}[randomClassName];
+    const randomTagName = 'custom-' + Math.random().toString(36).substring(2, 7);
+    customElements.define(randomTagName, DynamicClass);
+    const instance = new DynamicClass();
+    let stateVariables = Object.keys(instance).filter(field => field.startsWith('$'));
+    let stateVariablesWithout$ = stateVariables.map(str => str.substring(1));
+    
+    // Observe attributes
+    Object.defineProperty(el, 'observedAttributes', {
+        get: function() {
+            return stateVariablesWithout$;
+        }
+    });
+
+    // Attributes -> State
+    Object.defineProperty(el.prototype, 'attributeChangedCallback', {
+        value: function(name, oldValue, newValue) {
+            const fieldName = `$${name}`;
+            if (fieldName in this && this[fieldName] !== newValue) {
+                this[fieldName] = newValue;
+            }
+        },
+        writable: true,
+        configurable: true
+    });
+
+    customElements.define(tagname, el)
+
+    // Actual Constructor
+    window[el.prototype.constructor.name] = function (...params) {
+        console.log(params, stateVariables)
+        let elem = new el()
+
+        // State -> Attributes
+        // set each state value as getter and setter
+        stateVariables.forEach(property => {
+            const attrName = property.substring(1); // Assuming 'property' starts with a symbol like '$'
+            const backingFieldName = `_${property}`; // Construct the backing field name
+        
+            Object.defineProperty(elem, property, {
+                set: function(newValue) {
+                    console.log(`Setting attribute ${attrName} to ${newValue}`);
+                    this[backingFieldName] = newValue; // Use the backing field to store the value
+                    this.setAttribute(attrName, newValue); // Synchronize with the attribute
+                },
+                get: function() {
+                    return this[backingFieldName]; // Provide a getter to access the backing field value
+                },
+                enumerable: true,
+                configurable: true
+            });
+        });
+
+        // if there are more than one, expect them to be named
+        if(stateVariables.length > 1) {
+            if(typeof params[0] !== "object") {
+                console.error(`Quill: elements with multiple state initializers must structure them like {color: "blue", type: 2}`)
+                return
+            }
+            let i = -1
+            for (let param in params[0]) {
+                i++
+                let paramName = "$" + param
+                if(stateVariables[i] !== paramName) {
+                    if(!stateVariables[i]) {
+                        console.error(`Quill: state ${state} must be initialized`)
+                    } else {
+                        continue
+                    }
+                    console.error(`Quill: state initializer ${i} ${paramName} should be ${stateVariables[0]}`)
+                    return
+                } else {
+                    elem[paramName] = params[0][param]
+                }
+            }
+        } else {
+            if(params[0] !== stateVariables[0]) {
+                console.error(`Quill: state initializer $${params[0]} should be ${stateVariables[0]}`)
+                return
+            }
+            elem[stateVariables[0]] = params[0]
+        }
+
+        // Check if all state variables are set
+        for(state of stateVariables) {
+            console.log(elem[state])
+            if(!elem[state]) {
+                console.error(`Quill: state ${state} must be initialized`)
+            }
+        }
+        
+        return elem
+    }
+}
+
+/* PROTOTYPE FUNCTIONS */
+
 HTMLElement.prototype.addAttribute = function(name) {
     this.setAttribute(name, "")
 }
@@ -35,6 +139,107 @@ HTMLElement.prototype.endingTag = function() {
     const tag = this.tagName.toLowerCase();
     return `</${tag}>`;
 }
+
+HTMLElement.prototype.render = function (...els) {
+    this.innerHTML = ""
+    if(els) {
+        els.forEach((el) => {
+            this.appendChild(el)
+        })
+    }
+}
+
+HTMLElement.prototype.class = function(classNames) {
+    this.className = classNames
+    return this
+}
+
+/* PROTOTYPE STYLING */
+
+HTMLElement.prototype.styleVar = function(name, value) {
+    this.style.setProperty(name, value)
+    return this
+}
+
+HTMLElement.prototype.background = function(value) {
+    this.style.backgroundColor = value
+    return this
+}
+
+HTMLElement.prototype.padding = function(direction, amount) {
+    const directionName = `padding${direction.charAt(0).toUpperCase()}${direction.slice(1)}`;
+    if (typeof amount === 'number') {
+        this.style[directionName] = `${amount}px`;
+    } else {
+        this.style[directionName] = amount;
+    }
+    return this
+}  
+
+HTMLElement.prototype.position = function({x, y} = {}) {
+    if(!x || !y) {
+        console.error("HTMLElement.position: must have valid x and y values!")
+        return;
+    }
+    console.log(x, y)
+    this.style.left = `${x}%`
+    this.style.top = `${y}%`
+    return this
+}
+
+HTMLElement.prototype.overflow = function(value) {
+    if(!(value === "visible" || value === "hidden" || value === "clip" || value === "scroll" || value === "auto")) {
+        console.error("HTMLElement.overlflow: must have valid overflow value!")
+        return;
+    }
+    this.style.overflow = value;
+    return this
+}
+
+
+/* PROTOTYPE EVENTS */
+
+HTMLElement.prototype.onClick = function(func) {
+    this.addEventListener("click", func)
+    return this
+}
+
+/* DEFAULT WRAPPERS */
+
+window.a = function a({ href, name="" } = {}) {
+    let link = document.createElement("a")
+    link.setAttribute('href', href);
+    link.innerText = name
+    return link
+}
+
+window.img = function img(width="", height="", src="") {
+    let image = new Image()
+    if(width) image.width = width
+    if(height) image.height = height
+    if(src) image.src = src
+    return image
+}
+
+window.p = function p(innerText) {
+    let para = document.createElement("p")
+    para.innerText = innerText
+    return para
+}
+
+window.div = function (innerText) {
+    let div = document.createElement("div")
+    div.innerText = innerText
+    return div
+}
+
+window.span = function (innerText) {
+    let span = document.createElement("span")
+    span.innerText = innerText
+    return span
+}
+
+/* STRING TRANSLATORS */
 
 window.css = function css(cssString) {
     let container = document.querySelector("style#quillStyles");
@@ -76,6 +281,8 @@ window.html = function html(htmlString) {
 
     return fragment;
 };
+
+/* COMPATIBILITY */
 
 function detectMobile() {
     const mobileDeviceRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
