@@ -147,6 +147,7 @@ HTMLElement.prototype.render = function (...els) {
             this.appendChild(el)
         })
     }
+    return this
 }
 
 HTMLElement.prototype.class = function(classNames) {
@@ -161,8 +162,23 @@ HTMLElement.prototype.styleVar = function(name, value) {
     return this
 }
 
+HTMLElement.prototype.color = function(value) {
+    this.style.color = value
+    return this
+}
+
 HTMLElement.prototype.background = function(value) {
     this.style.backgroundColor = value
+    return this
+}
+
+HTMLElement.prototype.fontSize = function(value) {
+    this.style.fontSize = value
+    return this
+}
+
+HTMLElement.prototype.borderRadius = function(value) {
+    this.style.borderRadius = value
     return this
 }
 
@@ -174,14 +190,51 @@ HTMLElement.prototype.padding = function(direction, amount) {
         this.style[directionName] = amount;
     }
     return this
-}  
+}
+
+HTMLElement.prototype.outline = function(value) {
+    this.style.outline = value
+    return this
+}
+
+HTMLElement.prototype.maxWidth = function(value) {
+    this.style.maxWidth = value
+    return this
+}
+
+HTMLElement.prototype.margin = function(direction, amount) {
+    const directionName = `margin${direction.charAt(0).toUpperCase()}${direction.slice(1)}`;
+    if (typeof amount === 'number') {
+        this.style[directionName] = `${amount}px`;
+    } else {
+        this.style[directionName] = amount;
+    }
+    return this
+}
+
+HTMLElement.prototype.transform = function(value) {
+    this.style.transform = value
+    return this
+}
+
+HTMLElement.prototype.positionType = function (value) {
+    if(!(value === "absolute" || value === "relative" || value === "static" || value === "fixed" || value === "sticky")) {
+        console.error("HTMLElement.overlflow: must have valid overflow value!")
+        return;
+    }
+    this.style.position = value
+    return this
+}
 
 HTMLElement.prototype.position = function({x, y} = {}) {
     if(!x || !y) {
-        console.error("HTMLElement.position: must have valid x and y values!")
+        console.error("HTMLElement.position: must have valid x and y values: {x: 12, y: 23} where x and y are percentages")
         return;
     }
-    console.log(x, y)
+    let computed = window.getComputedStyle(this).position
+    if(!(computed === "absolute" || computed === "fixed")) {
+        this.style.position = "absolute"
+    }
     this.style.left = `${x}%`
     this.style.top = `${y}%`
     return this
@@ -206,17 +259,17 @@ HTMLElement.prototype.onClick = function(func) {
 
 /* DEFAULT WRAPPERS */
 
-window.a = function a({ href, name="" } = {}) {
+window.a = function a({ href, name=href } = {}) {
     let link = document.createElement("a")
     link.setAttribute('href', href);
     link.innerText = name
     return link
 }
 
-window.img = function img(width="", height="", src="") {
+window.img = function img({width="", height="", src=""}) {
     let image = new Image()
-    if(width) image.width = width
-    if(height) image.height = height
+    if(width) image.style.width = width
+    if(height) image.style.height = height
     if(src) image.src = src
     return image
 }
