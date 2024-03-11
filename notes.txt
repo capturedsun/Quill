@@ -1,0 +1,112 @@
+3/10
+
+Ran into a problem where I can't call the same element within itself.
+
+There are two problems:
+
+1. Javascript scoping means that it tries to call the class it is inside of.
+2. Quill instantiates the object when registered, to track its state
+
+
+This is what I ended up going with - simply not using the Space() recursively and instead making a child space.
+
+class Space extends HTMLElement {
+    form = Forms.observe(window.location.pathname, this)
+
+    contents = [
+        ...this.form.children.map(form => {
+            switch(form.type) {
+                case "file":
+                    return File()
+                case "space":
+                    return ChildSpace()
+                case "link":
+                    return Link()
+            }
+        })
+    ]
+
+    constructor() {
+        super()
+        console.log(this.form.path)
+        console.log(this.contents)
+        this.render(...this.contents)
+    }
+}
+
+
+
+This was my attempt to see if an anonymous class can be used. The class functions and extends HTMLElement - so problem #2 is solved.
+Problem #1 however, scoping, is not solved unless putting "window.Space()" instead of Space() here, so that it does not
+attempt to access the named function value. It seems both functions and classes have this problem. Perhaps there is a 
+different way it could be done in Quill, like so - 
+
+
+const el = () => class extends HTMLElement {
+    ...
+}
+quill.register(el, "Space", "parchment-space")
+
+
+However, not naming it at the top is less than desirable.
+
+quill("Space", class extends HTMLElement {
+    form = Forms.observe(window.location.pathname, this)
+
+    contents = [
+        ...this.form.children.map(form => {
+            switch(form.type) {
+                case "file":
+                    return File()
+                case "space":
+                    return ChildSpace()
+                case "link":
+                    return Link()
+            }
+        })
+    ]
+
+    constructor() {
+        super()
+        console.log(this.form.path)
+        console.log(this.contents)
+        this.render(...this.contents)
+    }
+})
+
+this would probably work. Still less than ideal but maybe if we used syntax highlighting it could be alright.
+How to name something without the class having access? This is the problem. I didn't try it without being an arrow function so 
+perhaps this would have a chance.
+
+
+
+// const Space = () => class extends HTMLElement {
+//     form = Forms.observe(window.location.pathname, this)
+
+//     contents = [
+//         ...this.form.children.map(form => {
+//             switch(form.type) {
+//                 case "file":
+//                     return File()
+//                 case "space":
+//                     return Space()
+//                 case "link":
+//                     return Link()
+//             }
+//         })
+//     ]
+
+//     constructor() {
+//         super()
+//         console.log(this.form.path)
+//         console.log(this.contents)
+//         this.render(...this.contents)
+//     }
+// }
+
+// let instan = Space()
+// customElements.define("space-", instan)
+// window.Space = () => "boi"
+// console.log(new instan())
+
+window.registerElement(Space, "parchment-space")

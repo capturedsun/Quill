@@ -48,7 +48,7 @@ window.registerElement = (el, tagname) => {
 
     // Actual Constructor
     window[el.prototype.constructor.name] = function (...params) {
-        console.log(params, stateVariables)
+        // console.log(params, stateVariables)
         let elem = new el()
 
         // State -> Attributes
