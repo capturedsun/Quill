@@ -83,19 +83,20 @@ window.registerElement = (el, tagname) => {
                 let paramName = "$" + param
                 if(stateVariables[i] !== paramName) {
                     if(!stateVariables[i]) {
-                        console.error(`Quill: state ${state} must be initialized`)
+                        console.error(`${el.prototype.constructor.name}: state ${state} must be initialized`)
                     } else {
                         continue
                     }
-                    console.error(`Quill: state initializer ${i} ${paramName} should be ${stateVariables[0]}`)
+                    console.error(`${el.prototype.constructor.name}: state initializer ${i} ${paramName} should be ${stateVariables[0]}`)
                     return
                 } else {
                     elem[paramName] = params[0][param]
                 }
             }
         } else {
-            if(params[0] !== stateVariables[0]) {
-                console.error(`Quill: state initializer $${params[0]} should be ${stateVariables[0]}`)
+            if(!params[0] && stateVariables[0]) {
+                console.log(params, stateVariables)
+                console.error(`${el.prototype.constructor.name}: state initializer $${params[0]} should be ${stateVariables[0]}`)
                 return
             }
             elem[stateVariables[0]] = params[0]
@@ -351,3 +352,9 @@ function getSafariVersion() {
       return safariVersion;
     }
 }
+
+/* CONSOLE */
+
+console.red = function(message) {
+    this.log(`%c${message}`, "color: rgb(254, 79, 42);");
+};
