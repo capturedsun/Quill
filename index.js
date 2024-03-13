@@ -18,8 +18,9 @@ window.$ = function(selector, el = document) {
 
 window.Registry = class Registry {
 
-    static parseClassFields(classStr) {
-        const lines = classStr.split('\n');
+    static parseClassFields(classObject) {
+        let str = classObject.toString();
+        const lines = str.split('\n');
         const fields = [];
         let braceDepth = 0; // Tracks the depth of curly braces to identify when we're inside a function/method
     
@@ -50,12 +51,7 @@ window.Registry = class Registry {
     }
 
     static registerElement = (el, tagname) => {
-        const randomClassName = 'Custom' + Math.random().toString(36).substring(2, 7);
-        const DynamicClass = {[randomClassName]: class extends el {}}[randomClassName];
-        const randomTagName = 'custom-' + Math.random().toString(36).substring(2, 7);
-        customElements.define(randomTagName, DynamicClass);
-        const instance = new DynamicClass();
-        let stateVariables = Object.keys(instance).filter(field => field.startsWith('$'));
+        let stateVariables = this.parseClassFields(el).filter(field => field.startsWith('$'));
         let stateVariablesWithout$ = stateVariables.map(str => str.substring(1));
         
         // Observe attributes
@@ -136,7 +132,7 @@ window.Registry = class Registry {
             }
 
             // Check if all state variables are set
-            for(state of stateVariables) {
+            for(let state of stateVariables) {
                 console.log(elem[state])
                 if(!elem[state]) {
                     console.error(`Quill: state ${state} must be initialized`)

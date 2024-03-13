@@ -22,7 +22,7 @@ testParseClassFieldsWithEqualityCheck() {
         }
     }
 
-    const fields = window.Registry.parseClassFields(Space.toString());
+    const fields = window.Registry.parseClassFields(Space);
     if(!(JSON.stringify(fields) === JSON.stringify(["form", "contents"]))) {
         return `Fields don't match`
     }
@@ -52,7 +52,7 @@ testParseClassFieldsWithInnerFunctionVariable() {
         }
     }
 
-    const fields = window.Registry.parseClassFields(Space.toString());
+    const fields = window.Registry.parseClassFields(Space);
     if(!(JSON.stringify(fields) === JSON.stringify(["form", "contents"]))) {
         return `Fields don't match`
     }
