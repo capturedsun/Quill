@@ -1,5 +1,22 @@
 window.testSuites.push( class testParse {
 
+
+testParseClassFieldsWithNoDefault() {
+    class Space extends HTMLElement {
+        form
+        contents = []
+    
+        constructor() {
+            super()
+        }
+    }
+
+    const fields = window.Registry.parseClassFields(Space);
+    if(!(JSON.stringify(fields) === JSON.stringify(["form", "contents"]))) {
+        return `Fields don't match`
+    }
+}
+
 testParseClassFieldsWithEqualityCheck() {
     class Space extends HTMLElement {
         form = Forms.observe(window.location.pathname, this)

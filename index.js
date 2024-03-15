@@ -51,8 +51,11 @@ window.Registry = class Registry {
     }
 
     static registerElement = (el, tagname) => {
+        console.log(this.parseClassFields(el))
         let stateVariables = this.parseClassFields(el).filter(field => field.startsWith('$'));
         let stateVariablesWithout$ = stateVariables.map(str => str.substring(1));
+
+        console.log(stateVariables)
         
         // Observe attributes
         Object.defineProperty(el, 'observedAttributes', {
