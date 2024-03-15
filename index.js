@@ -32,12 +32,11 @@ window.Registry = class Registry {
             braceDepth -= (trimmedLine.match(/}/g) || []).length;
     
             // Check if the line is outside any function/method (top-level within the class)
-            if (braceDepth === 1 && trimmedLine.includes('=') && !trimmedLine.startsWith('...')) {
-                // Extract the field name, which is before the '=' symbol
-                const fieldName = trimmedLine.split('=')[0].trim();
-                // Make sure the field name doesn't include invalid characters or spaces
-                if (!fieldName.includes(' ') && !fieldName.startsWith('this.')) {
-                    fields.push(fieldName);
+            if (braceDepth === 1) {
+                // Attempt to match a class field declaration with or without initialization
+                const fieldMatch = trimmedLine.match(/^([a-zA-Z_$][0-9a-zA-Z_$]*)\s*(=|;|\n|$)/);
+                if (fieldMatch) {
+                    fields.push(fieldMatch[1]);
                 }
             }
     
