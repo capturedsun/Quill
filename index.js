@@ -1,3 +1,61 @@
+/* NAVIGATION */
+
+let oldPushState = history.pushState;
+history.pushState = function pushState() {
+    let ret = oldPushState.apply(this, arguments);
+    window.dispatchEvent(new Event('pushstate'));
+    window.dispatchEvent(new Event('locationchange'));
+    return ret;
+};
+
+window.addEventListener('popstate', () => {
+    window.dispatchEvent(new Event('locationchange'));
+});
+  
+window.addEventListener('locationchange', locationChange);
+let urlBeforeChange = window.location.href;
+  
+window.navigateTo = function(url) {
+    window.history.pushState({}, '', url);
+}
+
+Object.defineProperty(window, 'routes', {
+    configurable: true,
+    enumerable: true,
+    set: function(newValue) {
+      Object.defineProperty(window, 'routes', {
+        value: newValue,
+        writable: false,
+        configurable: false,
+        enumerable: true
+      });
+  
+      locationChange();
+    },
+    get: function() {
+      return window.routes;
+    }
+});
+
+function locationChange() {
+    let URL = window.location.pathname.split("/").filter(d => (d !== 'Web') && (!d.includes('.html'))).join("/")
+    if(URL === "") URL = "/"
+
+    console.log("Location change: ", URL)
+
+    if(!window.routes[URL]) {
+        console.error("Quill: no URL for this route: ", URL)
+        return
+    }
+
+    let page = new window.routes[URL]()
+    window.rendering.push(page)
+    page.render()
+    window.rendering.pop(page)
+
+    urlBeforeChange = window.location.href;
+}
+
 /* $() */
 
 HTMLElement.prototype.$ = function(selector) {
@@ -11,6 +69,77 @@ window.$ = function(selector, el = document) {
         return el.querySelector(selector)
     } else {
         return el.querySelectorAll(selector);
+    }
+}
+
+/* CONSOLE */
+
+console.red = function(message) {
+    this.log(`%c${message}`, "color: rgb(254, 79, 42);");
+};
+
+console.green = function(message) {
+    this.log(`%c${message}`, "color: rgb(79, 254, 42);");
+
+}
+
+/* STRING TRANSLATORS */
+
+window.css = function css(cssString) {
+    let container = document.querySelector("style#quillStyles");
+    if(!container) {
+        container = document.createElement('style');
+        container.id = "quillStyles";
+        document.head.appendChild(container);
+    }
+  
+    let primarySelector = cssString.substring(0, cssString.indexOf("{")).trim();
+    primarySelector = primarySelector.replace(/\*/g, "all");
+    primarySelector = primarySelector.replace(/#/g, "id-");
+    primarySelector = primarySelector.replace(/,/g, "");
+    let stylesheet = container.querySelector(`:scope > style[id='${primarySelector}']`)
+    if(!stylesheet) {
+        stylesheet = document.createElement('style');
+        stylesheet.id = primarySelector;
+        stylesheet.appendChild(document.createTextNode(cssString));
+        container.appendChild(stylesheet);
+    } else {
+        stylesheet.innerText = cssString
+    }
+}
+
+window.html = function html(htmlString) {
+    let container = document.createElement('div');
+    container.innerHTML = htmlString;
+
+    // If there's only one child, return it directly
+    if (container.children.length === 1) {
+        return container.children[0];
+    }
+
+    // If there are multiple children, use a DocumentFragment
+    let fragment = document.createDocumentFragment();
+    while (container.firstChild) {
+        fragment.appendChild(container.firstChild);
+    }
+
+    return fragment;
+};
+
+/* COMPATIBILITY */
+
+function detectMobile() {
+    const mobileDeviceRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
+    return mobileDeviceRegex.test(navigator.userAgent);
+}
+  
+function getSafariVersion() {
+    const userAgent = navigator.userAgent;
+    const isSafari = userAgent.includes("Safari") && !userAgent.includes("Chrome");
+    if (isSafari) {
+      const safariVersionMatch = userAgent.match(/Version\/(\d+\.\d+)/);
+      const safariVersion = safariVersionMatch ? parseFloat(safariVersionMatch[1]) : null;
+      return safariVersion;
     }
 }
 
@@ -30,26 +159,21 @@ window.Page = class Page {
 }
 
 window.Shadow = class Shadow extends HTMLElement {
-    constructor(stateVariables, ...params) {
+    constructor(stateNames, ...params) {
         super()
 
-        console.log(Object.getOwnPropertyDescriptors(this))
-
-        if(!stateVariables) {
-            console.log("No state variables passed in, returning")
-            return
-        }
-
-        // State -> Attributes
-        // set each state value as getter and setter
-        stateVariables.forEach(attrName => {
-            const backingFieldName = `_${attrName}`; // Construct the backing field name
+        // State -> Attributes: set each state value as getter and setter
+        stateNames.forEach(name => {
+            const backingFieldName = `_${name}`; // Construct the backing field name
+            if(this["$" + name] !== undefined) { // User provided a default value
+                console.log("user default: ", name)
+            }
         
-            Object.defineProperty(this, attrName, {
+            Object.defineProperty(this, name, {
                 set: function(newValue) {
-                    // console.log(`Setting attribute ${attrName} to `, newValue);
+                    // console.log(`Setting attribute ${name} to `, newValue);
                     this[backingFieldName] = newValue; // Use the backing field to store the value
-                    this.setAttribute(attrName, typeof newValue === "object" ? "{..}" : newValue); // Synchronize with the attribute
+                    this.setAttribute(name, typeof newValue === "object" ? "{..}" : newValue); // Synchronize with the attribute
                 },
                 get: function() {
                     // console.log("get: ", this[backingFieldName])
@@ -60,42 +184,31 @@ window.Shadow = class Shadow extends HTMLElement {
             });
         });
 
-        // if there are more than one, expect them to be named
-        if(stateVariables.length > 1) {
-            if(typeof params[0] !== "object") {
-                console.error(`Quill: elements with multiple state initializers must structure them like {color: "blue", type: 2}`)
-                return
-            }
+        // Match params to state names
+        switch(stateNames.length) {
+        case 0:
+            console.log("No state variables passed in, returning")
+            return
+        default: 
             let i = -1
-            for (let param in params[0]) {
+            for (let param of params) {
                 i++
-                let paramName = "$" + param
-                if(stateVariables[i] !== paramName) {
-                    if(!stateVariables[i]) {
-                        console.error(`${el.prototype.constructor.name}: state ${state} must be initialized`)
-                    } else {
-                        continue
-                    }
-                    console.error(`${el.prototype.constructor.name}: state initializer ${i} ${paramName} should be ${stateVariables[0]}`)
+                
+                if(i > stateNames.length) {
+                    console.error(`${el.prototype.constructor.name}: too many parameters for state!`)
                     return
-                } else {
-                    this[paramName] = params[0][param]
+                }
+
+                if(this[stateNames[i]] === undefined) {
+                    this[stateNames[i]] = param
                 }
             }
-        } else {
-            if(!params[0] && stateVariables[0]) {
-                console.log(params, stateVariables)
-                console.error(`${el.prototype.constructor.name}: state initializer $${params[0]} should be ${stateVariables[0]}`)
-                return
-            }
-            this[stateVariables[0]] = params[0]
         }
 
-        // Check if all state variables are set
-        for(let state of stateVariables) {
-            // console.log(elem[state])
-            if(!this[state]) {
-                console.error(`Quill: state ${state} must be initialized`)
+        // Check if all state variables are set. If not set, check if it is a user-initted value
+        for(let state of stateNames) {
+            if(this[state] === undefined) {
+                console.error(`Quill: state "${state}" must be initialized`)
             }
         }
     }
@@ -139,42 +252,31 @@ window.Registry = class Registry {
     }
 
     static render = (el, parent) => {
-        if(!(el.constructor.name === "Home")) {
-            window.rendering[window.rendering.length-1].appendChild(el)
+        let renderParent = window.rendering[window.rendering.length-1]
+        if(renderParent) {
+            renderParent.appendChild(el)
         }
         window.rendering.push(el)
         el.render()
         window.rendering.pop(el)
     }
 
-    static registerHome(el) {
-        // console.log(params, stateVariables)
-        let home = new el()
-        Registry.render(home)
-        return home
-    }
-
     static register = (el, tagname) => {
-        if(el.prototype.constructor.name === "Home") {
-            Registry.registerHome(el)
-            return
-        }
-
-        let stateVariables = this.parseClassFields(el).filter(field => field.startsWith('$'));
-        let stateVariablesWithout$ = stateVariables.map(str => str.substring(1));
+        let stateVariables = this.parseClassFields(el).filter(field => field.startsWith('$')).map(str => str.substring(1));
         
         // Observe attributes
         Object.defineProperty(el, 'observedAttributes', {
             get: function() {
-                return stateVariablesWithout$;
+                return stateVariables;
             }
         });
 
         // Attributes -> State
         Object.defineProperty(el.prototype, 'attributeChangedCallback', {
             value: function(name, oldValue, newValue) {
-                const fieldName = `$${name}`;
-                if (fieldName in this && this[fieldName] !== newValue && newValue !== "[object Object]") {
+                const fieldName = `${name}`;
+                let blacklistedValues = ["[object Object]", "{..}", this[fieldName]]
+                if (stateVariables.includes(fieldName) && !blacklistedValues.includes(newValue)) {
                     this[fieldName] = newValue;
                 }
             },
@@ -186,18 +288,52 @@ window.Registry = class Registry {
 
         // Actual Constructor
         window[el.prototype.constructor.name] = function (...params) {
-            // console.log(params, stateVariables)
-            let elIncarnate = new el(stateVariablesWithout$, ...params)
+            let elIncarnate = new el(stateVariables, ...params)
+            // detect default variables, give em the treatment
+            // consider going back to this as the method, since i can then maybe fix the cosntructor issue as well
+            // user can define non-initted and non-outside variables in the constructor
             Registry.render(elIncarnate)
             return elIncarnate
         }
     }
 }
-window.register = Registry.register
-window.rendering = []
+
+/* DEFAULT WRAPPERS */
+
+window.a = function a({ href, name=href } = {}) {
+    let link = document.createElement("a")
+    link.setAttribute('href', href);
+    link.innerText = name
+    return link
+}
+
+window.img = function img({width="", height="", src=""}) {
+    let image = new Image()
+    if(width) image.style.width = width
+    if(height) image.style.height = height
+    if(src) image.src = src
+    return image
+}
+
+window.p = function p(innerText) {
+    let para = document.createElement("p")
+    para.innerText = innerText
+    return para
+}
+
+window.div = function (innerText) {
+    let div = document.createElement("div")
+    div.innerText = innerText
+    return div
+}
+
+window.span = function (innerText) {
+    let span = document.createElement("span")
+    span.innerText = innerText
+    return span
+}
 
 /* PROTOTYPE FUNCTIONS */
-
 HTMLElement.prototype.addAttribute = function(name) {
     this.setAttribute(name, "")
 }
@@ -340,108 +476,5 @@ HTMLElement.prototype.onClick = function(func) {
     return this
 }
 
-/* DEFAULT WRAPPERS */
-
-window.a = function a({ href, name=href } = {}) {
-    let link = document.createElement("a")
-    link.setAttribute('href', href);
-    link.innerText = name
-    return link
-}
-
-window.img = function img({width="", height="", src=""}) {
-    let image = new Image()
-    if(width) image.style.width = width
-    if(height) image.style.height = height
-    if(src) image.src = src
-    return image
-}
-
-window.p = function p(innerText) {
-    let para = document.createElement("p")
-    para.innerText = innerText
-    return para
-}
-
-window.div = function (innerText) {
-    let div = document.createElement("div")
-    div.innerText = innerText
-    return div
-}
-
-window.span = function (innerText) {
-    let span = document.createElement("span")
-    span.innerText = innerText
-    return span
-}
-
-/* STRING TRANSLATORS */
-
-window.css = function css(cssString) {
-    let container = document.querySelector("style#quillStyles");
-    if(!container) {
-        container = document.createElement('style');
-        container.id = "quillStyles";
-        document.head.appendChild(container);
-    }
-  
-    let primarySelector = cssString.substring(0, cssString.indexOf("{")).trim();
-    primarySelector = primarySelector.replace(/\*/g, "all");
-    primarySelector = primarySelector.replace(/#/g, "id-");
-    primarySelector = primarySelector.replace(/,/g, "");
-    let stylesheet = container.querySelector(`:scope > style[id='${primarySelector}']`)
-    if(!stylesheet) {
-        stylesheet = document.createElement('style');
-        stylesheet.id = primarySelector;
-        stylesheet.appendChild(document.createTextNode(cssString));
-        container.appendChild(stylesheet);
-    } else {
-        stylesheet.innerText = cssString
-    }
-}
-
-window.html = function html(htmlString) {
-    let container = document.createElement('div');
-    container.innerHTML = htmlString;
-
-    // If there's only one child, return it directly
-    if (container.children.length === 1) {
-        return container.children[0];
-    }
-
-    // If there are multiple children, use a DocumentFragment
-    let fragment = document.createDocumentFragment();
-    while (container.firstChild) {
-        fragment.appendChild(container.firstChild);
-    }
-
-    return fragment;
-};
-
-/* COMPATIBILITY */
-
-function detectMobile() {
-    const mobileDeviceRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
-    return mobileDeviceRegex.test(navigator.userAgent);
-}
-  
-function getSafariVersion() {
-    const userAgent = navigator.userAgent;
-    const isSafari = userAgent.includes("Safari") && !userAgent.includes("Chrome");
-    if (isSafari) {
-      const safariVersionMatch = userAgent.match(/Version\/(\d+\.\d+)/);
-      const safariVersion = safariVersionMatch ? parseFloat(safariVersionMatch[1]) : null;
-      return safariVersion;
-    }
-}
-
-/* CONSOLE */
-
-console.red = function(message) {
-    this.log(`%c${message}`, "color: rgb(254, 79, 42);");
-};
-
-console.green = function(message) {
-    this.log(`%c${message}`, "color: rgb(79, 254, 42);");
-
-}
+window.register = Registry.register
+window.rendering = []

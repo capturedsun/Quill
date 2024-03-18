@@ -12,14 +12,108 @@ window.testSuites.push( class testShadow {
         window.register(File, "file-el")
         let form = {data: "asdf"}
         const el = window.File(form)
-        console.log(el, el.$form, el._form)
         if(!(el.form === form)) {
             return `State field does not match object passed in!`
         }
     }
 
-    testRegisterThrowsIfNoConstructorParams() {
+    testMultiParams() {
         class File2 extends Shadow {
+            $form
+            $tag
+        
+            constructor(...params) {
+                super(...params)
+            }
+        }
+
+        window.register(File2, "file2-el")
+        let form = {data: "asdf"}
+        const el = window.File2(form, "tag")
+        if(!(el.form === form)) {
+            return `Form field does not match object passed in!`
+        }
+        if(!(el.tag === "tag")) {
+            return `Tag field does not match object passed in!`
+        }
+    }
+
+    onlyGetFieldsNotUsing$() {
+        class File5 extends Shadow {
+            $form
+            $tag
+        
+            constructor(...params) {
+                super(...params)
+            }
+        }
+
+        window.register(File5, "file5-el")
+        let form = {data: "asdf"}
+        const el = window.File5(form, "tag")
+        if(el.$tag !== undefined) {
+            return "Got field the wrong way!"
+        }
+    }
+
+    testChangeAttrChangesField() {
+        class File3 extends Shadow {
+            $form
+            $tag
+        
+            constructor(...params) {
+                super(...params)
+            }
+        }
+
+        window.register(File3, "file3-el")
+        let form = {data: "asdf"}
+        const el = window.File3(form, "tag")
+        el.setAttribute("tag", "asdf")
+        if(el.tag !== "asdf") {
+            return "Field did not change!"
+        }
+    }
+
+    testChangeFieldChangesAttr() {
+        class File4 extends Shadow {
+            $form
+            $tag
+        
+            constructor(...params) {
+                super(...params)
+            }
+        }
+
+        window.register(File4, "file4-el")
+        let form = {data: "asdf"}
+        const el = window.File4(form, "tag")
+        el.tag = "asdf"
+        if(el.getAttribute("tag") !== "asdf") {
+            return "Attribute did not change!"
+        }
+    }
+
+    testDefaultStateFieldWorks() {
+        class File6 extends Shadow {
+            $form = {data: "asdf"}
+        
+            constructor(...params) {
+                super(...params)
+                console.log(this.form)
+            }
+        }
+
+        window.register(File6, "file6-el")
+        const el = window.File6()
+        console.log(el, el.$form, el._form)
+        if(el.form === undefined) {
+            return `Default value did not work`
+        }
+    }
+
+    testRegisterThrowsIfNoConstructorParams() {
+        class File3 extends Shadow {
             $form
         
             constructor() {
@@ -28,7 +122,7 @@ window.testSuites.push( class testShadow {
         }
 
         try {
-            window.register(File2, "file2-el")
+            window.register(File3, "file3-el")
         } catch(e) {}
         
         return "Error not thrown!"

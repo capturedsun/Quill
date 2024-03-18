@@ -15,7 +15,7 @@ window.test = async function() {
     var start = new Date();
     for(let j=0; j<window.testSuites.length; j++) {
         let testSuite = window.testSuites[j];
-        console.log(`%c ➽ ${j+1} ${testSuite.name.replace("test", "")}`, 'color: #ffffff; font-size: 17px; padding-left: -20px; padding-top: 10px; padding-bottom: 10px; text-align: right;')
+        console.log(`%c ➽ ${j+1} ${testSuite.name.replace("test", "")}`, 'color: #e9c9a0; border: 3px solid #e9c9a0; border-radius: 10px; font-size: 17px; padding-left: -20px; margin-top: 20px; margin-bottom: 20px; padding-top: 10px; padding-bottom: 10px; padding-right: 10px; text-align: right;')
         let suite = new testSuite();
         let testNum = 0;
         let suiteContents = Object.getOwnPropertyNames(testSuite.prototype)
@@ -23,13 +23,21 @@ window.test = async function() {
             let test = suiteContents[i];
             if(typeof suite[test] === 'function' && test !== "constructor") {
                 testNum++;
+                console.log(`%c${testNum}. ${test}`, "margin-top: 10px; border-top: 2px solid #e9c9a0; color: #e9c9a0; border-radius: 10px; padding: 10px;");
                 let fail = await suite[test]();
                 if(fail) {
                     failed++;
-                    console.log(`%c   ${testNum}. ${test}: ${fail}`, 'background: #222; color: rgb(254, 62, 43)');
+                    let spaceNum = test.length - fail.length
+                    let spaces = ""
+                    if(spaceNum > 0) {
+                        for(let i=0; i < spaceNum; i++) {
+                            spaces += " "
+                        }
+                    }
+                    console.log(`%c ${fail}${spaces}`, 'border-bottom: 2px solid #e9c9a0; color: rgb(254, 62, 43); border-radius: 10px; padding: 10px');
                 } else {
                     success++;
-                    console.log(`%c   ${testNum}. ${test}`, 'background: #222; color: #00FF00');
+                    console.log(`%c${testNum}. ${test}`, 'border-bottom: 2px solid #e9c9a0; background: #628c60; color: transparent; border-radius: 10px; padding: 0px 10px 0px 10px');
                 }
             }
             // Need to flush ws buffer since saving is disabled, and that is what usually does the flushing
