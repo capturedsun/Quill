@@ -16,6 +16,91 @@ window.$ = function(selector, el = document) {
 
 /* REGISTER */
 
+window.ObservedObject = class ObservedObject {
+    //
+    // "$" Variable: triggers a UI change
+    //     Array: triggers a change if something is added, deleted, changed at the top level
+    //
+}
+
+window.Page = class Page {
+    appendChild(el) {
+        document.body.appendChild(el)
+    }
+}
+
+window.Shadow = class Shadow extends HTMLElement {
+    constructor(stateVariables, ...params) {
+        super()
+
+        console.log(Object.getOwnPropertyDescriptors(this))
+
+        if(!stateVariables) {
+            console.log("No state variables passed in, returning")
+            return
+        }
+
+        // State -> Attributes
+        // set each state value as getter and setter
+        stateVariables.forEach(attrName => {
+            const backingFieldName = `_${attrName}`; // Construct the backing field name
+        
+            Object.defineProperty(this, attrName, {
+                set: function(newValue) {
+                    // console.log(`Setting attribute ${attrName} to `, newValue);
+                    this[backingFieldName] = newValue; // Use the backing field to store the value
+                    this.setAttribute(attrName, typeof newValue === "object" ? "{..}" : newValue); // Synchronize with the attribute
+                },
+                get: function() {
+                    // console.log("get: ", this[backingFieldName])
+                    return this[backingFieldName]; // Provide a getter to access the backing field value
+                },
+                enumerable: true,
+                configurable: true
+            });
+        });
+
+        // if there are more than one, expect them to be named
+        if(stateVariables.length > 1) {
+            if(typeof params[0] !== "object") {
+                console.error(`Quill: elements with multiple state initializers must structure them like {color: "blue", type: 2}`)
+                return
+            }
+            let i = -1
+            for (let param in params[0]) {
+                i++
+                let paramName = "$" + param
+                if(stateVariables[i] !== paramName) {
+                    if(!stateVariables[i]) {
+                        console.error(`${el.prototype.constructor.name}: state ${state} must be initialized`)
+                    } else {
+                        continue
+                    }
+                    console.error(`${el.prototype.constructor.name}: state initializer ${i} ${paramName} should be ${stateVariables[0]}`)
+                    return
+                } else {
+                    this[paramName] = params[0][param]
+                }
+            }
+        } else {
+            if(!params[0] && stateVariables[0]) {
+                console.log(params, stateVariables)
+                console.error(`${el.prototype.constructor.name}: state initializer $${params[0]} should be ${stateVariables[0]}`)
+                return
+            }
+            this[stateVariables[0]] = params[0]
+        }
+
+        // Check if all state variables are set
+        for(let state of stateVariables) {
+            // console.log(elem[state])
+            if(!this[state]) {
+                console.error(`Quill: state ${state} must be initialized`)
+            }
+        }
+    }
+}
+
 window.Registry = class Registry {
 
     static parseClassFields(classObject) {
@@ -42,6 +127,10 @@ window.Registry = class Registry {
     
             // If we encounter the constructor, stop the parsing as we're only interested in fields above it
             if (trimmedLine.startsWith('constructor')) {
+                if(!trimmedLine.includes("...")) {
+                    throw new Error(`Shadow: class constructor must include parameters! e.g. constructor(...params) {
+                        super(...params)`)
+                }
                 break;
             }
         }
@@ -49,12 +138,30 @@ window.Registry = class Registry {
         return fields;
     }
 
-    static registerElement = (el, tagname) => {
-        console.log(this.parseClassFields(el))
+    static render = (el, parent) => {
+        if(!(el.constructor.name === "Home")) {
+            window.rendering[window.rendering.length-1].appendChild(el)
+        }
+        window.rendering.push(el)
+        el.render()
+        window.rendering.pop(el)
+    }
+
+    static registerHome(el) {
+        // console.log(params, stateVariables)
+        let home = new el()
+        Registry.render(home)
+        return home
+    }
+
+    static register = (el, tagname) => {
+        if(el.prototype.constructor.name === "Home") {
+            Registry.registerHome(el)
+            return
+        }
+
         let stateVariables = this.parseClassFields(el).filter(field => field.startsWith('$'));
         let stateVariablesWithout$ = stateVariables.map(str => str.substring(1));
-
-        console.log(stateVariables)
         
         // Observe attributes
         Object.defineProperty(el, 'observedAttributes', {
@@ -67,7 +174,7 @@ window.Registry = class Registry {
         Object.defineProperty(el.prototype, 'attributeChangedCallback', {
             value: function(name, oldValue, newValue) {
                 const fieldName = `$${name}`;
-                if (fieldName in this && this[fieldName] !== newValue) {
+                if (fieldName in this && this[fieldName] !== newValue && newValue !== "[object Object]") {
                     this[fieldName] = newValue;
                 }
             },
@@ -80,72 +187,14 @@ window.Registry = class Registry {
         // Actual Constructor
         window[el.prototype.constructor.name] = function (...params) {
             // console.log(params, stateVariables)
-            let elem = new el()
-
-            // State -> Attributes
-            // set each state value as getter and setter
-            stateVariables.forEach(property => {
-                const attrName = property.substring(1); // Assuming 'property' starts with a symbol like '$'
-                const backingFieldName = `_${property}`; // Construct the backing field name
-            
-                Object.defineProperty(elem, property, {
-                    set: function(newValue) {
-                        console.log(`Setting attribute ${attrName} to ${newValue}`);
-                        this[backingFieldName] = newValue; // Use the backing field to store the value
-                        this.setAttribute(attrName, newValue); // Synchronize with the attribute
-                    },
-                    get: function() {
-                        return this[backingFieldName]; // Provide a getter to access the backing field value
-                    },
-                    enumerable: true,
-                    configurable: true
-                });
-            });
-
-            // if there are more than one, expect them to be named
-            if(stateVariables.length > 1) {
-                if(typeof params[0] !== "object") {
-                    console.error(`Quill: elements with multiple state initializers must structure them like {color: "blue", type: 2}`)
-                    return
-                }
-                let i = -1
-                for (let param in params[0]) {
-                    i++
-                    let paramName = "$" + param
-                    if(stateVariables[i] !== paramName) {
-                        if(!stateVariables[i]) {
-                            console.error(`${el.prototype.constructor.name}: state ${state} must be initialized`)
-                        } else {
-                            continue
-                        }
-                        console.error(`${el.prototype.constructor.name}: state initializer ${i} ${paramName} should be ${stateVariables[0]}`)
-                        return
-                    } else {
-                        elem[paramName] = params[0][param]
-                    }
-                }
-            } else {
-                if(!params[0] && stateVariables[0]) {
-                    console.log(params, stateVariables)
-                    console.error(`${el.prototype.constructor.name}: state initializer $${params[0]} should be ${stateVariables[0]}`)
-                    return
-                }
-                elem[stateVariables[0]] = params[0]
-            }
-
-            // Check if all state variables are set
-            for(let state of stateVariables) {
-                console.log(elem[state])
-                if(!elem[state]) {
-                    console.error(`Quill: state ${state} must be initialized`)
-                }
-            }
-            
-            return elem
+            let elIncarnate = new el(stateVariablesWithout$, ...params)
+            Registry.render(elIncarnate)
+            return elIncarnate
         }
     }
 }
-window.registerElement = Registry.registerElement
+window.register = Registry.register
+window.rendering = []
 
 /* PROTOTYPE FUNCTIONS */
 

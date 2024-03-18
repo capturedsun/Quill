@@ -1,3 +1,13 @@
+3/16
+const TestClass = () => new class {
+    constructor() {
+        console.log("hey")
+    }
+}()
+
+This works. Could extend shadow. This way the function and the actual code are not separate.
+
+
 3/10
 
 Ran into a problem where I can't call the same element within itself.
@@ -109,4 +119,4 @@ perhaps this would have a chance.
 // window.Space = () => "boi"
 // console.log(new instan())
 
-window.registerElement(Space, "parchment-space")
+window.register(Space, "parchment-space")

@@ -2,6 +2,7 @@ console.log("Tests initializing.")
 window.testSuites = [];
 
 import ("./parse.test.js")
+import ("./shadow.test.js")
 
 window.test = async function() {
     // window.testSuites.sort();

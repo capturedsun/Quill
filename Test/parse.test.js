@@ -2,12 +2,12 @@ window.testSuites.push( class testParse {
 
 
 testParseClassFieldsWithNoDefault() {
-    class Space extends HTMLElement {
+    class Space extends Shadow {
         form
         contents = []
     
-        constructor() {
-            super()
+        constructor(...params) {
+            super(...params)
         }
     }
 
@@ -18,7 +18,7 @@ testParseClassFieldsWithNoDefault() {
 }
 
 testParseClassFieldsWithEqualityCheck() {
-    class Space extends HTMLElement {
+    class Space extends Shadow {
         form = Forms.observe(window.location.pathname, this)
     
         contents = [
@@ -34,8 +34,8 @@ testParseClassFieldsWithEqualityCheck() {
             })
         ]
     
-        constructor() {
-            super()
+        constructor(...params) {
+            super(...params)
         }
     }
 
@@ -46,7 +46,7 @@ testParseClassFieldsWithEqualityCheck() {
 }
 
 testParseClassFieldsWithInnerFunctionVariable() {
-    class Space extends HTMLElement {
+    class Space extends Shadow {
         form = Forms.observe(window.location.pathname, this)
     
         contents = [
@@ -64,8 +64,8 @@ testParseClassFieldsWithInnerFunctionVariable() {
             })
         ]
     
-        constructor() {
-            super()
+        constructor(...params) {
+            super(...params)
         }
     }
 
