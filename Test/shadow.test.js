@@ -1,6 +1,6 @@
 window.testSuites.push( class testShadow {
 
-    testObjectAsStateField() {
+    ObjectAsStateField() {
         class File extends Shadow {
             $form
         
@@ -17,7 +17,7 @@ window.testSuites.push( class testShadow {
         }
     }
 
-    testMultiParams() {
+    MultiParams() {
         class File2 extends Shadow {
             $form
             $tag
@@ -56,7 +56,7 @@ window.testSuites.push( class testShadow {
         }
     }
 
-    testChangeAttrChangesField() {
+    ChangeAttrChangesField() {
         class File3 extends Shadow {
             $form
             $tag
@@ -75,7 +75,7 @@ window.testSuites.push( class testShadow {
         }
     }
 
-    testChangeFieldChangesAttr() {
+    ChangeFieldChangesAttr() {
         class File4 extends Shadow {
             $form
             $tag
@@ -94,25 +94,37 @@ window.testSuites.push( class testShadow {
         }
     }
 
-    testDefaultStateFieldWorks() {
+    ConstructorCanUseState() {
+        class File7 extends Shadow {
+            $form = {data: "asdf"}
+            extra
+
+            constructor() {
+                super()
+                this.extra = this.form
+            }
+        }
+
+        window.register(File7, "file7-el")
+        const el = window.File7()
+        if(el.extra === undefined) {
+            return `Constructor could not access state`
+        }
+    }
+
+    DefaultStateFieldWorks() {
         class File6 extends Shadow {
             $form = {data: "asdf"}
-        
-            constructor(...params) {
-                super(...params)
-                console.log(this.form)
-            }
         }
 
         window.register(File6, "file6-el")
         const el = window.File6()
-        console.log(el, el.$form, el._form)
         if(el.form === undefined) {
             return `Default value did not work`
         }
     }
 
-    testRegisterThrowsIfNoConstructorParams() {
+    RegisterThrowsIfNoConstructorParams() {
         class File3 extends Shadow {
             $form
         
@@ -123,7 +135,9 @@ window.testSuites.push( class testShadow {
 
         try {
             window.register(File3, "file3-el")
-        } catch(e) {}
+        } catch(e) {
+            return
+        }
         
         return "Error not thrown!"
     }

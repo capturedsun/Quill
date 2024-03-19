@@ -1,8 +1,8 @@
 console.log("Tests initializing.")
 window.testSuites = [];
 
-import ("./parse.test.js")
-import ("./shadow.test.js")
+await import ("./parse.test.js")
+await import ("./shadow.test.js")
 
 window.test = async function() {
     // window.testSuites.sort();
@@ -63,3 +63,5 @@ window.test = async function() {
 window.wait = ms => new Promise(res => setTimeout(res, ms));
 
 window.__defineGetter__("test", test);
+
+window.test

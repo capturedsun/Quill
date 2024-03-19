@@ -1,5 +1,31 @@
 window.testSuites.push( class testParse {
 
+testParseConstructor() {
+    class Space extends Shadow {
+        form
+        contents = []
+    
+        constructor(...params) {
+            super(...params)
+        }
+    }
+
+    let newClass = window.Registry.parseConstructor(Space)
+    if(!newClass.prototype.constructor.toString().includes("window.Registry.construct(")) {
+        return "'window.Registry.construct(' not detected!"
+    }
+}
+
+testParseConstructorIfNoneProvided() {
+    class Space extends Shadow {
+        $form
+    }
+
+    let newClass = window.Registry.parseConstructor(Space)
+    if(!newClass.prototype.constructor.toString().includes("window.Registry.construct(")) {
+        return "'window.Registry.construct(' not detected!"
+    }
+}
 
 testParseClassFieldsWithNoDefault() {
     class Space extends Shadow {

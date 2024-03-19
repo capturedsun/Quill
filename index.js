@@ -159,58 +159,8 @@ window.Page = class Page {
 }
 
 window.Shadow = class Shadow extends HTMLElement {
-    constructor(stateNames, ...params) {
+    constructor() {
         super()
-
-        // State -> Attributes: set each state value as getter and setter
-        stateNames.forEach(name => {
-            const backingFieldName = `_${name}`; // Construct the backing field name
-            if(this["$" + name] !== undefined) { // User provided a default value
-                console.log("user default: ", name)
-            }
-        
-            Object.defineProperty(this, name, {
-                set: function(newValue) {
-                    // console.log(`Setting attribute ${name} to `, newValue);
-                    this[backingFieldName] = newValue; // Use the backing field to store the value
-                    this.setAttribute(name, typeof newValue === "object" ? "{..}" : newValue); // Synchronize with the attribute
-                },
-                get: function() {
-                    // console.log("get: ", this[backingFieldName])
-                    return this[backingFieldName]; // Provide a getter to access the backing field value
-                },
-                enumerable: true,
-                configurable: true
-            });
-        });
-
-        // Match params to state names
-        switch(stateNames.length) {
-        case 0:
-            console.log("No state variables passed in, returning")
-            return
-        default: 
-            let i = -1
-            for (let param of params) {
-                i++
-                
-                if(i > stateNames.length) {
-                    console.error(`${el.prototype.constructor.name}: too many parameters for state!`)
-                    return
-                }
-
-                if(this[stateNames[i]] === undefined) {
-                    this[stateNames[i]] = param
-                }
-            }
-        }
-
-        // Check if all state variables are set. If not set, check if it is a user-initted value
-        for(let state of stateNames) {
-            if(this[state] === undefined) {
-                console.error(`Quill: state "${state}" must be initialized`)
-            }
-        }
     }
 }
 
@@ -240,15 +190,48 @@ window.Registry = class Registry {
     
             // If we encounter the constructor, stop the parsing as we're only interested in fields above it
             if (trimmedLine.startsWith('constructor')) {
-                if(!trimmedLine.includes("...")) {
-                    throw new Error(`Shadow: class constructor must include parameters! e.g. constructor(...params) {
-                        super(...params)`)
-                }
                 break;
             }
         }
     
         return fields;
+    }
+
+    static parseConstructor(classObject) {
+        let str = classObject.toString();
+        const lines = str.split('\n');
+        const fields = [];
+        let braceDepth = 0;
+        let constructorFound = false
+    
+        for (let line of lines) {
+            const trimmedLine = line.trim();
+    
+            braceDepth += (trimmedLine.match(/{/g) || []).length;
+            braceDepth -= (trimmedLine.match(/}/g) || []).length;
+    
+            if (braceDepth === 2) {
+                if (trimmedLine.startsWith('super(')) {
+                    constructorFound = true
+                    var newLine = trimmedLine + "\nwindow.Registry.construct(this, window.Registry.currentStateVariables, ...window.Registry.currentParams)\n";
+                    str = str.replace(line, newLine)
+                    break;
+                }
+            }
+        }
+
+        if(!constructorFound) {
+            let constructorString = `
+                constructor(...params) {
+                    super(...params)
+                    window.Registry.construct(this, window.Registry.currentStateVariables, ...window.Registry.currentParams)
+                }
+            `
+            let closingBracket = str.lastIndexOf("}");
+            str = str.slice(0, closingBracket - 1) + constructorString + "\n}" 
+        }
+    
+        return eval('(' + str + ')');
     }
 
     static render = (el, parent) => {
@@ -261,9 +244,66 @@ window.Registry = class Registry {
         window.rendering.pop(el)
     }
 
+    static construct = (elem, stateNames, ...params) => {
+
+        // State -> Attributes: set each state value as getter and setter
+        stateNames.forEach(name => {
+            const backingFieldName = `_${name}`;
+        
+            Object.defineProperty(elem, name, {
+                set: function(newValue) {
+                    // console.log(`Setting attribute ${name} to `, newValue);
+                    elem[backingFieldName] = newValue; // Use the backing field to store the value
+                    elem.setAttribute(name, typeof newValue === "object" ? "{..}" : newValue); // Synchronize with the attribute
+                },
+                get: function() {
+                    // console.log("get: ", elem[backingFieldName])
+                    return elem[backingFieldName]; // Provide a getter to access the backing field value
+                },
+                enumerable: true,
+                configurable: true
+            });
+
+            if(elem["$" + name] !== undefined) { // User provided a default value
+                elem[name] = elem["$" + name]
+                delete elem["$" + name]
+            }
+        });
+
+        // Match params to state names
+        switch(stateNames.length) {
+        case 0:
+            console.log("No state variables passed in, returning")
+            return
+        default: 
+            let i = -1
+            for (let param of params) {
+                i++
+                
+                if(i > stateNames.length) {
+                    console.error(`${el.prototype.constructor.name}: too many parameters for state!`)
+                    return
+                }
+
+                if(elem[stateNames[i]] === undefined) {
+                    elem[stateNames[i]] = param
+                }
+            }
+        }
+
+        // Check if all state variables are set. If not set, check if it is a user-initted value
+        for(let state of stateNames) {
+            if(elem[state] === undefined) {
+                console.error(`Quill: state "${state}" must be initialized`)
+            }
+        }
+
+    }
+
     static register = (el, tagname) => {
         let stateVariables = this.parseClassFields(el).filter(field => field.startsWith('$')).map(str => str.substring(1));
-        
+        el = this.parseConstructor(el)
+
         // Observe attributes
         Object.defineProperty(el, 'observedAttributes', {
             get: function() {
@@ -288,10 +328,9 @@ window.Registry = class Registry {
 
         // Actual Constructor
         window[el.prototype.constructor.name] = function (...params) {
-            let elIncarnate = new el(stateVariables, ...params)
-            // detect default variables, give em the treatment
-            // consider going back to this as the method, since i can then maybe fix the cosntructor issue as well
-            // user can define non-initted and non-outside variables in the constructor
+            window.Registry.currentStateVariables = stateVariables
+            window.Registry.currentParams = params
+            let elIncarnate = new el(...params)
             Registry.render(elIncarnate)
             return elIncarnate
         }
