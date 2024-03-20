@@ -200,7 +200,6 @@ window.Registry = class Registry {
     static parseConstructor(classObject) {
         let str = classObject.toString();
         const lines = str.split('\n');
-        const fields = [];
         let braceDepth = 0;
         let constructorFound = false
     
@@ -209,29 +208,34 @@ window.Registry = class Registry {
     
             braceDepth += (trimmedLine.match(/{/g) || []).length;
             braceDepth -= (trimmedLine.match(/}/g) || []).length;
+
+            if(trimmedLine.startsWith('constructor(')) {
+                constructorFound = true
+            }
     
             if (braceDepth === 2) {
                 if (trimmedLine.startsWith('super(')) {
                     constructorFound = true
                     var newLine = trimmedLine + "\nwindow.Registry.construct(this, window.Registry.currentStateVariables, ...window.Registry.currentParams)\n";
                     str = str.replace(line, newLine)
-                    break;
+                    return eval('(' + str + ')');
                 }
             }
         }
 
-        if(!constructorFound) {
+        if(constructorFound) {
+            throw new Error("Quill: Constructor must have super()! " + lines[0])
+        } else {
             let constructorString = `
-                constructor(...params) {
-                    super(...params)
-                    window.Registry.construct(this, window.Registry.currentStateVariables, ...window.Registry.currentParams)
-                }
+            constructor(...params) {
+                super(...params)
+                window.Registry.construct(this, window.Registry.currentStateVariables, ...window.Registry.currentParams)
+            }
             `
             let closingBracket = str.lastIndexOf("}");
-            str = str.slice(0, closingBracket - 1) + constructorString + "\n}" 
+            str = str.slice(0, closingBracket - 1) + constructorString + "\n}"
+            return eval('(' + str + ')');
         }
-    
-        return eval('(' + str + ')');
     }
 
     static render = (el, parent) => {
@@ -245,7 +249,6 @@ window.Registry = class Registry {
     }
 
     static construct = (elem, stateNames, ...params) => {
-
         // State -> Attributes: set each state value as getter and setter
         stateNames.forEach(name => {
             const backingFieldName = `_${name}`;
@@ -297,7 +300,6 @@ window.Registry = class Registry {
                 console.error(`Quill: state "${state}" must be initialized`)
             }
         }
-
     }
 
     static register = (el, tagname) => {

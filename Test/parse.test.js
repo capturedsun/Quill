@@ -27,6 +27,23 @@ testParseConstructorIfNoneProvided() {
     }
 }
 
+testParseConstructorFailsIfNoSuper() {
+    class Space extends Shadow {
+        form
+        contents = []
+    
+        constructor() {
+        }
+    }
+
+    try {
+        let newClass = window.Registry.parseConstructor(Space)
+        return "No error thrown!"
+    } catch(e) {
+
+    }    
+}
+
 testParseClassFieldsWithNoDefault() {
     class Space extends Shadow {
         form
