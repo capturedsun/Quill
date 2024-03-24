@@ -144,12 +144,24 @@ function getSafariVersion() {
 }
 
 /* REGISTER */
-
-window.ObservedObject = class ObservedObject {
-    //
-    // "$" Variable: triggers a UI change
-    //     Array: triggers a change if something is added, deleted, changed at the top level
-    //
+class ObservedObject {
+    static decode(obj) {
+        let instance = new this()
+        Object.keys(instance).forEach((key) => {
+            if(key[0] === "$") {
+                key = key.substring(1)
+            }
+            console.log(key, obj[key])
+            if(obj[key]) {
+                instance[key] = obj[key]
+            } else {
+                if(!instance[key]) {
+                    throw new Error(`ObservedObject: Non-default value "${key}" must be initialized!`)
+                }
+            }
+        })
+        return instance
+    }
 }
 
 window.Page = class Page {
@@ -200,27 +212,39 @@ window.Registry = class Registry {
     static parseConstructor(classObject) {
         let str = classObject.toString();
         const lines = str.split('\n');
+        let modifiedLines = [];
         let braceDepth = 0;
         let constructorFound = false
+        let superCallFound = false;
     
-        for (let line of lines) {
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i];
             const trimmedLine = line.trim();
+    
+            modifiedLines.push(line);
     
             braceDepth += (trimmedLine.match(/{/g) || []).length;
             braceDepth -= (trimmedLine.match(/}/g) || []).length;
-
-            if(trimmedLine.startsWith('constructor(')) {
-                constructorFound = true
+    
+            if (trimmedLine.startsWith('constructor(')) {
+                constructorFound = true;
             }
     
-            if (braceDepth === 2) {
-                if (trimmedLine.startsWith('super(')) {
-                    constructorFound = true
-                    var newLine = trimmedLine + "\nwindow.Registry.construct(this, window.Registry.currentStateVariables, ...window.Registry.currentParams)\n";
-                    str = str.replace(line, newLine)
-                    return eval('(' + str + ')');
-                }
+            if (constructorFound && trimmedLine.startsWith('super(') && !superCallFound) {
+                superCallFound = true;
+                modifiedLines.push(`    window.Registry.construct(this, window.Registry.currentStateVariables, ...window.Registry.currentParams);`);
             }
+    
+            if (constructorFound && braceDepth === 1 && superCallFound) {
+                modifiedLines.splice(modifiedLines.length - 1, 0, '    Object.preventExtensions(this);');
+                modifiedLines.splice(modifiedLines.length - 1, 0, '    window.Registry.testInitialized(this);');
+            }
+        }
+
+        if(superCallFound) {
+            let modifiedStr = modifiedLines.join('\n');
+            console.log(modifiedStr)
+            return eval('(' + modifiedStr + ')');
         }
 
         if(constructorFound) {
@@ -229,13 +253,17 @@ window.Registry = class Registry {
             let constructorString = `
             constructor(...params) {
                 super(...params)
-                window.Registry.construct(this, window.Registry.currentStateVariables, ...window.Registry.currentParams)
+                window.Registry.construct(this)
             }
             `
             let closingBracket = str.lastIndexOf("}");
             str = str.slice(0, closingBracket - 1) + constructorString + "\n}"
             return eval('(' + str + ')');
         }
+    }
+
+    static testInitialized() {
+
     }
 
     static render = (el, parent) => {
@@ -248,62 +276,87 @@ window.Registry = class Registry {
         window.rendering.pop(el)
     }
 
-    static construct = (elem, stateNames, ...params) => {
-        // State -> Attributes: set each state value as getter and setter
-        stateNames.forEach(name => {
-            const backingFieldName = `_${name}`;
-        
-            Object.defineProperty(elem, name, {
-                set: function(newValue) {
-                    // console.log(`Setting attribute ${name} to `, newValue);
-                    elem[backingFieldName] = newValue; // Use the backing field to store the value
-                    elem.setAttribute(name, typeof newValue === "object" ? "{..}" : newValue); // Synchronize with the attribute
-                },
-                get: function() {
-                    // console.log("get: ", elem[backingFieldName])
-                    return elem[backingFieldName]; // Provide a getter to access the backing field value
-                },
-                enumerable: true,
-                configurable: true
+    static construct = (elem) => {
+        const params = window.Registry.currentParams
+        const allNames = Object.keys(elem).filter(key => typeof elem[key] !== 'function')
+        const fieldNames = allNames.filter(field => /^[^\$]/.test(field))
+        const stateNames = allNames.filter(field => /^[$][^$]/.test(field)).map(str => str.substring(1));
+        const observedObjectNames = allNames.filter(field => /^[$][$][^$]/.test(field)).map(str => str.substring(2));
+
+        function makeState(elem, stateNames, params) {
+            elem._observers = {}
+
+            // State -> Attributes: set each state value as getter and setter
+            stateNames.forEach(name => {
+                const backingFieldName = `_${name}`;
+                elem._observers[name] = new Map()
+            
+                Object.defineProperty(elem, name, {
+                    set: function(newValue) {
+                        console.log(`Setting state ${name} to `, newValue);
+                        elem[backingFieldName] = newValue; // Use the backing field to store the value
+                        elem.setAttribute(name, typeof newValue === "object" ? "{..}" : newValue);
+                        console.log(elem._observers)
+                        for (let [observer, properties] of elem._observers[name]) {
+                            for (let property of properties) {
+                                observer[property] = newValue;
+                            }
+                        }
+                    },
+                    get: function() {
+                        Registry.lastState = [name, elem[backingFieldName]]
+                        // check which elements are observing the 
+                        return elem[backingFieldName]; // Provide a getter to access the backing field value
+                    },
+                    enumerable: true,
+                    configurable: true
+                });
+
+                if(elem["$" + name] !== undefined) { // User provided a default value
+                    elem[name] = elem["$" + name]
+                    delete elem["$" + name]
+                }
             });
 
-            if(elem["$" + name] !== undefined) { // User provided a default value
-                elem[name] = elem["$" + name]
-                delete elem["$" + name]
-            }
-        });
+            // Match params to state names
+            switch(stateNames.length) {
+            case 0:
+                console.log("No state variables passed in, returning")
+                return
+            default: 
+                let i = -1
+                for (let param of params) {
+                    i++
+                    
+                    if(i > stateNames.length) {
+                        console.error(`${el.prototype.constructor.name}: too many parameters for state!`)
+                        return
+                    }
 
-        // Match params to state names
-        switch(stateNames.length) {
-        case 0:
-            console.log("No state variables passed in, returning")
-            return
-        default: 
-            let i = -1
-            for (let param of params) {
-                i++
-                
-                if(i > stateNames.length) {
-                    console.error(`${el.prototype.constructor.name}: too many parameters for state!`)
-                    return
+                    if(elem[stateNames[i]] === undefined) {
+                        elem[stateNames[i]] = param
+                    }
                 }
+            }
 
-                if(elem[stateNames[i]] === undefined) {
-                    elem[stateNames[i]] = param
+            // Check if all state variables are set. If not set, check if it is a user-initted value
+            for(let state of stateNames) {
+                if(elem[state] === undefined) {
+                    console.error(`Quill: state "${state}" must be initialized`)
                 }
             }
         }
 
-        // Check if all state variables are set. If not set, check if it is a user-initted value
-        for(let state of stateNames) {
-            if(elem[state] === undefined) {
-                console.error(`Quill: state "${state}" must be initialized`)
-            }
+        function makeObservedObjects(elem, observedObjectNames, params) {
+
         }
+
+        makeState(elem, stateNames, params)
+        makeObservedObjects(elem, observedObjectNames, params)
     }
 
     static register = (el, tagname) => {
-        let stateVariables = this.parseClassFields(el).filter(field => field.startsWith('$')).map(str => str.substring(1));
+        let stateVariables = this.parseClassFields(el).filter(field => /^[$][^$]/.test(field)).map(str => str.substring(1));
         el = this.parseConstructor(el)
 
         // Observe attributes
@@ -330,7 +383,6 @@ window.Registry = class Registry {
 
         // Actual Constructor
         window[el.prototype.constructor.name] = function (...params) {
-            window.Registry.currentStateVariables = stateVariables
             window.Registry.currentParams = params
             let elIncarnate = new el(...params)
             Registry.render(elIncarnate)
@@ -345,6 +397,7 @@ window.a = function a({ href, name=href } = {}) {
     let link = document.createElement("a")
     link.setAttribute('href', href);
     link.innerText = name
+    Registry.render(link)
     return link
 }
 
@@ -353,24 +406,36 @@ window.img = function img({width="", height="", src=""}) {
     if(width) image.style.width = width
     if(height) image.style.height = height
     if(src) image.src = src
+    Registry.render(image)
     return image
 }
 
 window.p = function p(innerText) {
+    let parent = window.rendering[window.rendering.length-1]
     let para = document.createElement("p")
     para.innerText = innerText
+    if(Registry.lastState[0] && parent[Registry.lastState[0]] === innerText) {
+        if(!parent._observers[Registry.lastState[0]][para]) {
+            parent._observers[Registry.lastState[0]].set(para, [])
+        }
+        parent._observers[Registry.lastState[0]].get(para).push("innerText")
+    }
+    Registry.lastState = []
+    Registry.render(para)
     return para
 }
 
 window.div = function (innerText) {
     let div = document.createElement("div")
     div.innerText = innerText
+    Registry.render(div)
     return div
 }
 
 window.span = function (innerText) {
     let span = document.createElement("span")
     span.innerText = innerText
+    Registry.render(span)
     return span
 }
 
@@ -401,8 +466,8 @@ HTMLElement.prototype.endingTag = function() {
 }
 
 HTMLElement.prototype.render = function (...els) {
-    this.innerHTML = ""
-    if(els) {
+    if(els.length > 0) {
+        this.innerHTML = ""
         els.forEach((el) => {
             this.appendChild(el)
         })

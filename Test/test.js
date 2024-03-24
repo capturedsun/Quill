@@ -3,6 +3,23 @@ window.testSuites = [];
 
 await import ("./parse.test.js")
 await import ("./shadow.test.js")
+await import ("./observedobject.test.js")
+await import ("./render.test.js")
+
+window.randomName = function randomName(prefix) {
+    const sanitizedPrefix = prefix.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    // Generate a random suffix using numbers and lowercase letters
+    const suffixLength = 8; // You can adjust the length of the suffix
+    const suffixChars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    let suffix = '';
+    for (let i = 0; i < suffixLength; i++) {
+        suffix += suffixChars.charAt(Math.floor(Math.random() * suffixChars.length));
+    }
+
+    // Combine the prefix and suffix with a hyphen
+    return `${sanitizedPrefix}-${suffix}`;
+}
 
 window.test = async function() {
     // window.testSuites.sort();
@@ -24,7 +41,15 @@ window.test = async function() {
             if(typeof suite[test] === 'function' && test !== "constructor") {
                 testNum++;
                 console.log(`%c${testNum}. ${test}`, "margin-top: 10px; border-top: 2px solid #e9c9a0; color: #e9c9a0; border-radius: 10px; padding: 10px;");
-                let fail = await suite[test]();
+                
+                let fail;
+                try { 
+                    fail = await suite[test]()
+                } catch(e) {
+                    console.error(e)
+                    fail = "Error"
+                }
+
                 if(fail) {
                     failed++;
                     let spaceNum = test.length - fail.length

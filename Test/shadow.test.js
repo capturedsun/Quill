@@ -124,22 +124,42 @@ window.testSuites.push( class testShadow {
         }
     }
 
-    RegisterThrowsIfNoConstructorParams() {
-        class File3 extends Shadow {
-            $form
+    CannotAddUndefinedProperties() {
+        register(class File extends Shadow {
+
+            render = () => {
+                p("boi")
+            }
+        
+            constructor() {
+                super()
+                this.hey = "unallowed"
+            }
+        }, randomName("file"))
+
+        try {
+            const file = File()
+            return "Did not throw error!"
+        } catch(e) { 
+            if(!e.message.includes("Extensible")) {
+                throw e
+            }
+        }
+    }
+
+    SetNonStateFields() {
+        register(class File extends Shadow {
+            nonStateField
         
             constructor() {
                 super()
             }
-        }
+        }, randomName("file"))
 
-        try {
-            window.register(File3, "file3-el")
-        } catch(e) {
-            return
+        const file = File("asd")
+        if(!file.nonStateField === "asd") {
+            return "Did not set field!"
         }
-        
-        return "Error not thrown!"
     }
     
 })
