@@ -26,6 +26,19 @@ window.testSuites.push( class testObservedObject {
         }
     }
 
+    // MustInitAllFields() {
+    //     class Form extends ObservedObject {
+    //         id
+    //         path
+    //         $canvasPosition
+    //     }
+
+    //     let obj = Form.decode({id: "123", path: "/", canvasPosition: "25|25"})
+    //     if(!(obj && obj["id"] === "123" && obj["path"] === "/" && obj["canvasPosition"] === "25|25")) {
+    //         return "Not all fields initialized!"
+    //     }
+    // }
+
     // ChangingObjChangesInstance() {
     //     class Form extends ObservedObject {
     //         id

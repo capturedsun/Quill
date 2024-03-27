@@ -144,6 +144,58 @@ function getSafariVersion() {
 }
 
 /* REGISTER */
+class ObservedArray extends Array {
+    parent;
+    name;
+
+    constructor(arr = [], parent, name) {
+        super();
+        this.parent = parent
+        this.name = name
+        this.push(...arr);
+    }
+
+    triggerParent() {
+        this.parent[this.name] = this
+    }
+
+    push(...args) {
+        const result = super.push(...args);
+        this.triggerParent()
+        return result;
+    }
+
+    pop() {
+        const result = super.pop();
+        this.triggerParent()
+        return result;
+    }
+
+    shift() {
+        const result = super.shift();
+        this.triggerParent()
+        return result;
+    }
+
+    unshift(...args) {
+        const result = super.unshift(...args);
+        this.triggerParent()
+        return result;
+    }
+
+    splice(start, deleteCount, ...items) {
+        const removedItems = super.splice(start, deleteCount, ...items);
+        if (items.length > 0) {
+            console.log(`Inserted ${items.length} items:`, items);
+        }
+        if (removedItems.length > 0) {
+            console.log(`Removed ${removedItems.length} items:`, removedItems);
+        }
+        this.triggerParent()
+        return removedItems;
+    }
+}
+
 class ObservedObject {
     constructor() {
         this._observers = {}
@@ -159,10 +211,18 @@ class ObservedObject {
                 const backingFieldName = `_${key}`;
                 Object.defineProperty(instance, key, {
                     set: function(newValue) {
-                        instance[backingFieldName] = newValue;
+                        if(Array.isArray(newValue) && newValue.parent === undefined) {
+                            instance[backingFieldName] = new ObservedArray(newValue, this, key)
+                        } else {
+                            instance[backingFieldName] = newValue;
+                        }
                         for (let [observer, properties] of instance._observers[key]) {
                             for (let property of properties) {
-                                observer[property] = newValue;
+                                if(property === "children") {
+                                    Registry.rerender(observer)
+                                } else {
+                                    observer[property] = newValue;
+                                }
                             }
                         }
                     },
@@ -206,7 +266,7 @@ window.Shadow = class Shadow extends HTMLElement {
 window.Registry = class Registry {
 
     static initReactivity(elem, name, value) {
-        let parent = window.rendering[window.rendering.length-1]
+        let parent = window.rendering.last()
 
         if(Registry.lastState.length === 3) {
             let [objName, objField, fieldValue] = Registry.lastState
@@ -217,7 +277,10 @@ window.Registry = class Registry {
                 if(!parent[objName]._observers[objField].get(elem)) {
                     parent[objName]._observers[objField].set(elem, [])
                 }
-                parent[objName]._observers[objField].get(elem).push(name)
+                let properties = parent[objName]._observers[objField].get(elem)
+                if(!properties.includes(name)) {
+                    properties.push(name)
+                }
             }
         } else {
             let [stateUsed, stateValue] = Registry.lastState
@@ -241,6 +304,17 @@ window.Registry = class Registry {
         window.rendering.push(el)
         el.render()
         window.rendering.pop(el)
+    }
+
+    static rerender = (el) => {
+        if(el.parentElement) {
+            window.rendering.push(el.parentElement)
+        }
+        window.rendering.push(el)
+        el.innerHTML = ""
+        el.render()
+        window.rendering.pop()
+        window.rendering.pop()
     }
 
     static testInitialized(el) {
@@ -485,6 +559,13 @@ window.Registry = class Registry {
 
 /* DEFAULT WRAPPERS */
 
+window.ForEach = function (arr, cb) {
+    Registry.initReactivity(window.rendering.last(), "children", arr)
+    arr.forEach((el, i) => {
+        cb(el, i)
+    })
+}
+
 window.a = function a({ href, name=href } = {}) {
     let link = document.createElement("a")
     link.setAttribute('href', href);
@@ -525,6 +606,10 @@ window.span = function (innerText) {
 }
 
 /* PROTOTYPE FUNCTIONS */
+
+Array.prototype.last = function() {
+    return this[this.length-1]
+}
 HTMLElement.prototype.addAttribute = function(name) {
     this.setAttribute(name, "")
 }

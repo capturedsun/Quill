@@ -98,11 +98,10 @@ window.testSuites.push( class testRender {
         let Form = class Form extends ObservedObject {
             id
             $path
-            $children
             $canvasPosition
         }
 
-        let object = Form.decode({id: "123", path: "/", children: [], canvasPosition: "25|25"});
+        let object = Form.decode({id: "123", path: "/", canvasPosition: "25|25"});
 
         register(class File extends Shadow {
             $$form
@@ -127,39 +126,34 @@ window.testSuites.push( class testRender {
         }
     }
 
-    // ObservedObjectWithArray() {
-    //     let Form = class Form extends ObservedObject {
-    //         id
-    //         $path
-    //         $children
-    //         $canvasPosition
-    //     }
+    ObservedObjectWithArray() {
+        let Form = class Form extends ObservedObject {
+            id
+            $children
+        }
 
-    //     let object = Form.decode({id: "123", path: "/", children: [], canvasPosition: "25|25"});
+        let object = Form.decode({id: "123", children: [{path: "berry"}, {path: "blue"}]});
 
-    //     register(class File extends Shadow {
-    //         $$form
+        register(class File extends Shadow {
+            $$form
         
-    //         render = () => {
-    //             p(this.form.path)
-    //         }
-    //     }, randomName("file"))
+            render = () => {
+                ForEach(this.form.children, (child) => {
+                    p(child.path)
+                })
+            }
+        }, randomName("file"))
 
-    //     let file = File(object)
+        let file = File(object)
 
-    //     if(file.firstChild?.innerText !== "/") {
-    //         return "Path is not inside of paragraph tag"
-    //     }
+        if(file.firstChild?.innerText !== "berry" || file.children[1].innerText !== "blue") {
+            return "Paths did not render correctly in children"
+        }
 
-    //     file.form.children.push("hello")
-
-    //     object.path = "/asd"
-    //     if(file.form.path !== "/asd") {
-    //         return "Path did not change when changing original object"
-    //     }
-    //     if(file.firstChild?.innerText !== "/asd") {
-    //         return "Observed Object did not cause a reactive change"
-    //     }
-    // }
+        file.form.children.push({path: "hello"})
+        if(file.children.length !== 3) {
+            return "No reactivity for adding children"
+        }
+    }
     
 })
