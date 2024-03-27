@@ -511,6 +511,7 @@ window.Registry = class Registry {
         let braceDepth = 0;
         let constructorFound = false
         let superCallFound = false;
+        let constructorEndFound = false;
     
         for (let i = 0; i < lines.length; i++) {
             let line = lines[i];
@@ -530,9 +531,10 @@ window.Registry = class Registry {
                 modifiedLines.push(`    window.Registry.construct(this, window.Registry.currentStateVariables, ...window.Registry.currentParams);`);
             }
     
-            if (constructorFound && braceDepth === 1 && superCallFound) {
+            if (constructorFound && braceDepth === 1 && superCallFound && !constructorEndFound) {
                 modifiedLines.splice(modifiedLines.length - 1, 0, '    Object.preventExtensions(this);');
                 modifiedLines.splice(modifiedLines.length - 1, 0, '    window.Registry.testInitialized(this);');
+                constructorEndFound = true
             }
         }
 

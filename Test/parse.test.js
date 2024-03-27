@@ -118,4 +118,35 @@ testParseClassFieldsWithInnerFunctionVariable() {
     }
 }
 
+ParseConstructorWithFunctionsBelow() {
+    class Space extends Shadow {
+        $$form = Forms.observe(window.location.pathname, this)
+    
+        render = () => {
+            ForEach(this.form.children, (form) => {
+                switch(form.type) {
+                    case "file":
+                        File(form)
+                        break
+                    case "space":
+                        ChildSpace(form)
+                        break
+                    case "link":
+                        Link()
+                        break
+                }
+            })
+        }
+    
+        constructor() {
+            super()
+        }
+    
+        connectedCallback() {
+        }
+    }
+    
+    window.Registry.parseConstructor(Space)
+}
+
 })
