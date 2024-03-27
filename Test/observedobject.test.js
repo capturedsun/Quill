@@ -26,24 +26,6 @@ window.testSuites.push( class testObservedObject {
         }
     }
 
-    // WorksWithShadow() {
-    //     window.Form = class Form extends ObservedObject {
-    //         id
-    //         path
-    //         $canvasPosition
-    //     }
-
-    //     class File extends Shadow {
-    //         $$form = Form.decode({id: "123", path: "/", canvasPosition: "25|25"})
-    //     }
-
-    //     window.register(File, "file-1")
-    //     let file = window.File()
-    //     console.log(file, p())
-
-    //     return "Not yet"
-    // }
-
     // ChangingObjChangesInstance() {
     //     class Form extends ObservedObject {
     //         id

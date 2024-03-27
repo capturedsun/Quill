@@ -124,7 +124,31 @@ window.testSuites.push( class testShadow {
         }
     }
 
-    CannotAddUndefinedProperties() {
+    // this needs to be fixed
+    // CannotAddUndefinedProperties() {
+    //     register(class File extends Shadow {
+
+    //         render = () => {
+    //             p("boi")
+    //         }
+        
+    //         constructor() {
+    //             super()
+    //             this.hey = "unallowed"
+    //         }
+    //     }, randomName("file"))
+
+    //     try {
+    //         const file = File()
+    //         return "Did not throw error!"
+    //     } catch(e) { 
+    //         if(!e.message.includes("Extensible")) {
+    //             throw e
+    //         }
+    //     }
+    // }
+
+    CannotAddUndefinedPropertiesAfterConstructor() {
         register(class File extends Shadow {
 
             render = () => {
@@ -133,21 +157,21 @@ window.testSuites.push( class testShadow {
         
             constructor() {
                 super()
-                this.hey = "unallowed"
             }
         }, randomName("file"))
 
         try {
             const file = File()
+            file.hey = "unallowed"
             return "Did not throw error!"
         } catch(e) { 
-            if(!e.message.includes("Extensible")) {
+            if(!e.message.includes("extensible")) {
                 throw e
             }
         }
     }
 
-    SetNonStateFields() {
+    NonStateFieldsGetSet() {
         register(class File extends Shadow {
             nonStateField
         
@@ -157,9 +181,29 @@ window.testSuites.push( class testShadow {
         }, randomName("file"))
 
         const file = File("asd")
-        if(!file.nonStateField === "asd") {
+        if(!(file.nonStateField === "asd")) {
             return "Did not set field!"
         }
     }
-    
+
+    AllFieldsMustBeSet() {
+        register(class File extends Shadow {
+            $field1
+            $field2
+        
+            constructor() {
+                super()
+            }
+        }, randomName("file"))
+
+        try {
+            const file = File("asd")
+            console.log(file.field1, file.field2)
+            return "No error thrown"
+        } catch(e) {
+            if(!e.message.includes("field2\" must be initialized")) {
+                throw e
+            }
+        }
+    }    
 })

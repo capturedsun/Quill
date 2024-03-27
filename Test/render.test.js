@@ -5,7 +5,6 @@ window.testSuites.push( class testRender {
             $form
 
             render = () => {
-                console.log("render", window.rendering)
                 p(this.form.data)
             }
         
@@ -31,7 +30,6 @@ window.testSuites.push( class testRender {
             $name
 
             render = () => {
-                console.log("render", window.rendering)
                 p(this.name)
             }
         
@@ -55,7 +53,6 @@ window.testSuites.push( class testRender {
             $name = "asd"
 
             render = () => {
-                console.log("render", window.rendering)
                 p(this.name)
                 p("asd")
             }
@@ -69,14 +66,100 @@ window.testSuites.push( class testRender {
         const file = File()
         file.name = "hey123"
 
-        let childs = Array.from(file.children)
-        childs.forEach((el) => {
-            console.log(el.innerText)
-        })
-
         if(file.children[1].innerText === "hey123") {
             return "Paragraph innertext falsely changed"
         }
     }
+
+    DefaultObservedObject() {
+        window.Form = class Form extends ObservedObject {
+            id
+            path
+            $canvasPosition
+        }
+
+        class File extends Shadow {
+            $$form = Form.decode({id: "123", path: "/", canvasPosition: "25|25"})
+
+            render = () => {
+                p(this.form.path)
+            }
+        }
+
+        window.register(File, "file-1")
+        let file = window.File()
+
+        if(file.firstChild?.innerText !== "/") {
+            return "Path is not inside of paragraph tag"
+        }
+    }
+
+    ObservedObject() {
+        let Form = class Form extends ObservedObject {
+            id
+            $path
+            $children
+            $canvasPosition
+        }
+
+        let object = Form.decode({id: "123", path: "/", children: [], canvasPosition: "25|25"});
+
+        register(class File extends Shadow {
+            $$form
+        
+            render = () => {
+                p(this.form.path)
+            }
+        }, randomName("file"))
+
+        let file = File(object)
+
+        if(file.firstChild?.innerText !== "/") {
+            return "Path is not inside of paragraph tag"
+        }
+
+        object.path = "/asd"
+        if(file.form.path !== "/asd") {
+            return "Path did not change when changing original object"
+        }
+        if(file.firstChild?.innerText !== "/asd") {
+            return "Observed Object did not cause a reactive change"
+        }
+    }
+
+    // ObservedObjectWithArray() {
+    //     let Form = class Form extends ObservedObject {
+    //         id
+    //         $path
+    //         $children
+    //         $canvasPosition
+    //     }
+
+    //     let object = Form.decode({id: "123", path: "/", children: [], canvasPosition: "25|25"});
+
+    //     register(class File extends Shadow {
+    //         $$form
+        
+    //         render = () => {
+    //             p(this.form.path)
+    //         }
+    //     }, randomName("file"))
+
+    //     let file = File(object)
+
+    //     if(file.firstChild?.innerText !== "/") {
+    //         return "Path is not inside of paragraph tag"
+    //     }
+
+    //     file.form.children.push("hello")
+
+    //     object.path = "/asd"
+    //     if(file.form.path !== "/asd") {
+    //         return "Path did not change when changing original object"
+    //     }
+    //     if(file.firstChild?.innerText !== "/asd") {
+    //         return "Observed Object did not cause a reactive change"
+    //     }
+    // }
     
 })

@@ -145,13 +145,39 @@ function getSafariVersion() {
 
 /* REGISTER */
 class ObservedObject {
+    constructor() {
+        this._observers = {}
+    }
+
     static decode(obj) {
         let instance = new this()
+
         Object.keys(instance).forEach((key) => {
             if(key[0] === "$") {
-                key = key.substring(1)
+                key = key.slice(1)
+                instance._observers[key] = new Map()
+                const backingFieldName = `_${key}`;
+                Object.defineProperty(instance, key, {
+                    set: function(newValue) {
+                        instance[backingFieldName] = newValue;
+                        for (let [observer, properties] of instance._observers[key]) {
+                            for (let property of properties) {
+                                observer[property] = newValue;
+                            }
+                        }
+                    },
+                    get: function() {
+                        Registry.lastState.push(key)
+                        Registry.lastState.push(instance[backingFieldName])
+                        return instance[backingFieldName];
+                    },
+                    enumerable: true,
+                    configurable: true
+                });
+
+                delete instance["$" + key]
             }
-            console.log(key, obj[key])
+
             if(obj[key]) {
                 instance[key] = obj[key]
             } else {
@@ -160,6 +186,7 @@ class ObservedObject {
                 }
             }
         })
+
         return instance
     }
 }
@@ -177,6 +204,200 @@ window.Shadow = class Shadow extends HTMLElement {
 }
 
 window.Registry = class Registry {
+
+    static initReactivity(elem, name, value) {
+        let parent = window.rendering[window.rendering.length-1]
+
+        if(Registry.lastState.length === 3) {
+            let [objName, objField, fieldValue] = Registry.lastState
+            if(!objName) return;
+
+            let valueCheck = parent[objName][objField]
+            if(valueCheck && valueCheck === value) {
+                if(!parent[objName]._observers[objField].get(elem)) {
+                    parent[objName]._observers[objField].set(elem, [])
+                }
+                parent[objName]._observers[objField].get(elem).push(name)
+            }
+        } else {
+            let [stateUsed, stateValue] = Registry.lastState
+            if(!stateUsed) return;
+            
+            if(stateUsed && parent[stateUsed] === value) {
+                if(!parent._observers[stateUsed].get(elem)) {
+                    parent._observers[stateUsed].set(elem, [])
+                }
+                parent._observers[stateUsed].get(elem).push(name)
+            }
+        }
+        Registry.lastState = []
+    }
+
+    static render = (el, parent) => {
+        let renderParent = window.rendering[window.rendering.length-1]
+        if(renderParent) {
+            renderParent.appendChild(el)
+        }
+        window.rendering.push(el)
+        el.render()
+        window.rendering.pop(el)
+    }
+
+    static testInitialized(el) {
+        let fields = Object.keys(el).filter(key => 
+            typeof el[key] !== 'function' && key !== "_observers"
+        )
+
+        for(let field of fields) {
+            if(el[field] === undefined) {
+                throw new Error(`Quill: field "${field}" must be initialized`)
+            }
+        }
+    }
+
+    static construct = (elem) => { // After default params are set, but before body of constructor
+        const params = window.Registry.currentParams
+        const allNames = Object.keys(elem).filter(key => typeof elem[key] !== 'function')
+        const stateNames = allNames.filter(field => /^[$][^$]/.test(field)).map(str => str.substring(1));
+        const observedObjectNames = allNames.filter(field => /^[$][$][^$]/.test(field)).map(str => str.substring(2));
+
+        /*
+        State Reactivity [stateName].get(elem).push(attribute)
+            _observers = {
+                name: Map(
+                    <p>: [innerText, background]
+                ),
+            }
+
+        OO Reactivity: [objectName][objectField].get(elem).push(attribute)
+            $$form: extends ObservedObject {
+                _observers = {
+                    canvasPosition: Map(
+                        <p>: [position]
+                    ),
+                    path: Map(
+                        <p>: [innerText]
+                    )
+                }
+            }
+        */
+
+        function makeState(elem, stateNames, params) {
+            elem._observers = {}
+
+            // State -> Attributes: set each state value as getter and setter
+            stateNames.forEach(name => {
+                const backingFieldName = `_${name}`;
+                elem._observers[name] = new Map()
+            
+                Object.defineProperty(elem, name, {
+                    set: function(newValue) {
+                        // console.log(`Setting state ${name} to `, newValue);
+                        elem[backingFieldName] = newValue; // Use the backing field to store the value
+                        elem.setAttribute(name, typeof newValue === "object" ? "{..}" : newValue);
+                        for (let [observer, properties] of elem._observers[name]) {
+                            for (let property of properties) {
+                                observer[property] = newValue;
+                            }
+                        }
+                    },
+                    get: function() {
+                        Registry.lastState = [name, elem[backingFieldName]]
+                        // check which elements are observing the 
+                        return elem[backingFieldName]; // Provide a getter to access the backing field value
+                    },
+                    enumerable: true,
+                    configurable: true
+                });
+
+                if(elem["$" + name] !== undefined) {
+                    elem[name] = elem["$" + name]
+                }
+
+                delete elem["$" + name]
+            });
+        }
+
+        function makeObservedObjects(elem, objectNames, params) {
+            objectNames.forEach(name => {
+                const backingFieldName = `_${name}`;
+
+                Object.defineProperty(elem, name, {
+                    set: function(newValue) {
+                        elem[backingFieldName] = newValue;
+                    },
+                    get: function() {
+                        Registry.lastState = [name]
+                        return elem[backingFieldName];
+                    },
+                    enumerable: true,
+                    configurable: true
+                });
+
+                if(elem["$$" + name] !== undefined) {
+                    elem[name] = elem["$$" + name]
+                }
+
+                delete elem["$$" + name]
+            });
+        }
+
+        makeState(elem, stateNames, params)
+        makeObservedObjects(elem, observedObjectNames, params)
+
+        let allNamesCleaned = Object.keys(elem)
+            .filter(key => typeof elem[key] !== 'function' && key !== "_observers" && key !== "_observedObjects")
+            .map(key => key.replace(/^(\$\$|\$)/, ''));
+
+        let i = -1
+        for (let param of params) {
+            i++
+            
+            if(i > allNamesCleaned.length) {
+                console.error(`${el.prototype.constructor.name}: too many parameters for field!`)
+                return
+            }
+
+            if(elem[allNamesCleaned[i]] === undefined) {
+                elem[allNamesCleaned[i]] = param
+            }
+        }
+    }
+
+    static register = (el, tagname) => {
+        let stateVariables = this.parseClassFields(el).filter(field => /^[$][^$]/.test(field)).map(str => str.substring(1));
+        el = this.parseConstructor(el)
+
+        // Observe attributes
+        Object.defineProperty(el, 'observedAttributes', {
+            get: function() {
+                return stateVariables;
+            }
+        });
+
+        // Attributes -> State
+        Object.defineProperty(el.prototype, 'attributeChangedCallback', {
+            value: function(name, oldValue, newValue) {
+                const fieldName = `${name}`;
+                let blacklistedValues = ["[object Object]", "{..}", this[fieldName]]
+                if (stateVariables.includes(fieldName) && !blacklistedValues.includes(newValue)) {
+                    this[fieldName] = newValue;
+                }
+            },
+            writable: true,
+            configurable: true
+        });
+
+        customElements.define(tagname, el)
+
+        // Actual Constructor
+        window[el.prototype.constructor.name] = function (...params) {
+            window.Registry.currentParams = params
+            let elIncarnate = new el(...params)
+            Registry.render(elIncarnate)
+            return elIncarnate
+        }
+    }
 
     static parseClassFields(classObject) {
         let str = classObject.toString();
@@ -243,7 +464,6 @@ window.Registry = class Registry {
 
         if(superCallFound) {
             let modifiedStr = modifiedLines.join('\n');
-            console.log(modifiedStr)
             return eval('(' + modifiedStr + ')');
         }
 
@@ -259,134 +479,6 @@ window.Registry = class Registry {
             let closingBracket = str.lastIndexOf("}");
             str = str.slice(0, closingBracket - 1) + constructorString + "\n}"
             return eval('(' + str + ')');
-        }
-    }
-
-    static testInitialized() {
-
-    }
-
-    static render = (el, parent) => {
-        let renderParent = window.rendering[window.rendering.length-1]
-        if(renderParent) {
-            renderParent.appendChild(el)
-        }
-        window.rendering.push(el)
-        el.render()
-        window.rendering.pop(el)
-    }
-
-    static construct = (elem) => {
-        const params = window.Registry.currentParams
-        const allNames = Object.keys(elem).filter(key => typeof elem[key] !== 'function')
-        const fieldNames = allNames.filter(field => /^[^\$]/.test(field))
-        const stateNames = allNames.filter(field => /^[$][^$]/.test(field)).map(str => str.substring(1));
-        const observedObjectNames = allNames.filter(field => /^[$][$][^$]/.test(field)).map(str => str.substring(2));
-
-        function makeState(elem, stateNames, params) {
-            elem._observers = {}
-
-            // State -> Attributes: set each state value as getter and setter
-            stateNames.forEach(name => {
-                const backingFieldName = `_${name}`;
-                elem._observers[name] = new Map()
-            
-                Object.defineProperty(elem, name, {
-                    set: function(newValue) {
-                        console.log(`Setting state ${name} to `, newValue);
-                        elem[backingFieldName] = newValue; // Use the backing field to store the value
-                        elem.setAttribute(name, typeof newValue === "object" ? "{..}" : newValue);
-                        console.log(elem._observers)
-                        for (let [observer, properties] of elem._observers[name]) {
-                            for (let property of properties) {
-                                observer[property] = newValue;
-                            }
-                        }
-                    },
-                    get: function() {
-                        Registry.lastState = [name, elem[backingFieldName]]
-                        // check which elements are observing the 
-                        return elem[backingFieldName]; // Provide a getter to access the backing field value
-                    },
-                    enumerable: true,
-                    configurable: true
-                });
-
-                if(elem["$" + name] !== undefined) { // User provided a default value
-                    elem[name] = elem["$" + name]
-                    delete elem["$" + name]
-                }
-            });
-
-            // Match params to state names
-            switch(stateNames.length) {
-            case 0:
-                console.log("No state variables passed in, returning")
-                return
-            default: 
-                let i = -1
-                for (let param of params) {
-                    i++
-                    
-                    if(i > stateNames.length) {
-                        console.error(`${el.prototype.constructor.name}: too many parameters for state!`)
-                        return
-                    }
-
-                    if(elem[stateNames[i]] === undefined) {
-                        elem[stateNames[i]] = param
-                    }
-                }
-            }
-
-            // Check if all state variables are set. If not set, check if it is a user-initted value
-            for(let state of stateNames) {
-                if(elem[state] === undefined) {
-                    console.error(`Quill: state "${state}" must be initialized`)
-                }
-            }
-        }
-
-        function makeObservedObjects(elem, observedObjectNames, params) {
-
-        }
-
-        makeState(elem, stateNames, params)
-        makeObservedObjects(elem, observedObjectNames, params)
-    }
-
-    static register = (el, tagname) => {
-        let stateVariables = this.parseClassFields(el).filter(field => /^[$][^$]/.test(field)).map(str => str.substring(1));
-        el = this.parseConstructor(el)
-
-        // Observe attributes
-        Object.defineProperty(el, 'observedAttributes', {
-            get: function() {
-                return stateVariables;
-            }
-        });
-
-        // Attributes -> State
-        Object.defineProperty(el.prototype, 'attributeChangedCallback', {
-            value: function(name, oldValue, newValue) {
-                const fieldName = `${name}`;
-                let blacklistedValues = ["[object Object]", "{..}", this[fieldName]]
-                if (stateVariables.includes(fieldName) && !blacklistedValues.includes(newValue)) {
-                    this[fieldName] = newValue;
-                }
-            },
-            writable: true,
-            configurable: true
-        });
-
-        customElements.define(tagname, el)
-
-        // Actual Constructor
-        window[el.prototype.constructor.name] = function (...params) {
-            window.Registry.currentParams = params
-            let elIncarnate = new el(...params)
-            Registry.render(elIncarnate)
-            return elIncarnate
         }
     }
 }
@@ -411,16 +503,9 @@ window.img = function img({width="", height="", src=""}) {
 }
 
 window.p = function p(innerText) {
-    let parent = window.rendering[window.rendering.length-1]
     let para = document.createElement("p")
     para.innerText = innerText
-    if(Registry.lastState[0] && parent[Registry.lastState[0]] === innerText) {
-        if(!parent._observers[Registry.lastState[0]][para]) {
-            parent._observers[Registry.lastState[0]].set(para, [])
-        }
-        parent._observers[Registry.lastState[0]].get(para).push("innerText")
-    }
-    Registry.lastState = []
+    Registry.initReactivity(para, "innerText", innerText)
     Registry.render(para)
     return para
 }
