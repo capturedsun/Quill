@@ -1,4 +1,4 @@
-window.testSuites.push( class testShadow {
+window.testSuites.push( class testInit {
 
     ObjectAsStateField() {
         class File extends Shadow {
@@ -207,6 +207,32 @@ window.testSuites.push( class testShadow {
         }
     }
 
+    ErrorIfNotObservedObject() {
+        window.register(class ChildSpace extends Shadow {
+            $$form
+            $name
+        
+            render = () => {
+              
+            }
+        
+            constructor() {
+                super()
+                this.name = this.form.path.split("/").pop()
+            }
+        }, randomName("space-"))
+
+        try {
+            let space = ChildSpace({path: "/asd"})
+            return "no error thrown!"
+        } catch(e) {
+            if(e.message.includes("Observed Object")) {
+            } else {
+                throw e
+            }
+        }
+    }
+
     FieldsInCorrectOrder() {
         window.register(class ChildSpace extends Shadow {
             $$form
@@ -221,9 +247,13 @@ window.testSuites.push( class testShadow {
                 this.name = this.form.path.split("/").pop()
             }
         }, randomName("space-"))
+
+        class Form extends ObservedObject {
+            $path
+        }
         
         try {
-            let space = ChildSpace({path: "/asd"})
+            let space = ChildSpace(Form.decode({path: "/asd"}))
         } catch(e) {
             if(e.message.includes("Cannot read properties of undefined (reading 'path')")) {
                 return "Form did not get initialized!"

@@ -2,7 +2,7 @@ console.log("Tests initializing.")
 window.testSuites = [];
 
 await import ("./parse.test.js")
-await import ("./shadow.test.js")
+await import ("./init.test.js")
 await import ("./observedobject.test.js")
 await import ("./render.test.js")
 

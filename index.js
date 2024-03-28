@@ -419,21 +419,22 @@ window.Registry = class Registry {
         makeState(elem, stateNames, params)
         makeObservedObjects(elem, observedObjectNames, params)
 
-        let allNamesCleaned = allNames
-            .filter(key => typeof elem[key] !== 'function' && key !== "_observers" && key !== "_observedObjects")
-            .map(key => key.replace(/^(\$\$|\$)/, ''));
-
         let i = -1
         for (let param of params) {
             i++
             
-            if(i > allNamesCleaned.length) {
+            if(i > allNames.length) {
                 console.error(`${el.prototype.constructor.name}: too many parameters for field!`)
                 return
             }
 
-            if(elem[allNamesCleaned[i]] === undefined) {
-                elem[allNamesCleaned[i]] = param
+            let bareName = allNames[i].replace(/^(\$\$|\$)/, '');
+
+            if(elem[bareName] === undefined) {
+                if(allNames[i].startsWith("$$") && !(param instanceof ObservedObject)) {
+                    throw new Error(`Field ${allNames[i]} must be an Observed Object!`)
+                }
+                elem[bareName] = param
             }
         }
     }
