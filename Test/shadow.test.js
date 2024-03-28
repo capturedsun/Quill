@@ -205,5 +205,31 @@ window.testSuites.push( class testShadow {
                 throw e
             }
         }
-    }    
+    }
+
+    FieldsInCorrectOrder() {
+        window.register(class ChildSpace extends Shadow {
+            $$form
+            $name
+        
+            render = () => {
+              
+            }
+        
+            constructor() {
+                super()
+                this.name = this.form.path.split("/").pop()
+            }
+        }, randomName("space-"))
+        
+        try {
+            let space = ChildSpace({path: "/asd"})
+        } catch(e) {
+            if(e.message.includes("Cannot read properties of undefined (reading 'path')")) {
+                return "Form did not get initialized!"
+            } else {
+                throw e
+            }
+        }
+    }
 })

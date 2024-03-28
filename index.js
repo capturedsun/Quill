@@ -419,7 +419,7 @@ window.Registry = class Registry {
         makeState(elem, stateNames, params)
         makeObservedObjects(elem, observedObjectNames, params)
 
-        let allNamesCleaned = Object.keys(elem)
+        let allNamesCleaned = allNames
             .filter(key => typeof elem[key] !== 'function' && key !== "_observers" && key !== "_observedObjects")
             .map(key => key.replace(/^(\$\$|\$)/, ''));
 
