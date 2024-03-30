@@ -83,29 +83,66 @@ console.green = function(message) {
 
 }
 
+/* STYLES */
+
+window.quillStyles = document.querySelector("style#shadows");
+if(!window.quillStyles) {
+    window.quillStyles = document.createElement('style');
+    window.quillStyles.id = "shadows";
+    document.head.appendChild(window.quillStyles);
+}
+
+window.quillStyles.add = function(tag) {
+    let stylesheet = this.querySelector(`:scope > style[id='${tag}']`)
+    tag = tag.replace(/\*/g, "all");
+    tag = tag.replace(/#/g, "id-");
+    tag = tag.replace(/,/g, "");
+    if(!stylesheet) {
+        stylesheet = document.createElement('style');
+        stylesheet.id = tag;
+        this.appendChild(stylesheet);
+    }
+}
+
+window.quillStyles.update = function(tag, string) {
+    let sheet = this.querySelector(`:scope > style[id='${tag}']`)?.sheet
+    if(!sheet) console.error('Quill: could not find stylesheet to update!')
+    
+    for (let i = 0; i < sheet.cssRules.length; i++) {
+        let rule = sheet.cssRules[i];
+        
+        if (rule.selectorText === tag || rule.selectorText === `${tag.toLowerCase()}`) {
+            sheet.deleteRule(i);
+            break;
+        }
+    }
+    
+    sheet.insertRule(`${tag} { ${string} }`, sheet.cssRules.length);
+}
+
 /* STRING TRANSLATORS */
 
 window.css = function css(cssString) {
-    let container = document.querySelector("style#quillStyles");
-    if(!container) {
-        container = document.createElement('style');
-        container.id = "quillStyles";
-        document.head.appendChild(container);
-    }
+    // let container = document.querySelector("style#quillStyles");
+    // if(!container) {
+    //     container = document.createElement('style');
+    //     container.id = "quillStyles";
+    //     document.head.appendChild(container);
+    // }
   
-    let primarySelector = cssString.substring(0, cssString.indexOf("{")).trim();
-    primarySelector = primarySelector.replace(/\*/g, "all");
-    primarySelector = primarySelector.replace(/#/g, "id-");
-    primarySelector = primarySelector.replace(/,/g, "");
-    let stylesheet = container.querySelector(`:scope > style[id='${primarySelector}']`)
-    if(!stylesheet) {
-        stylesheet = document.createElement('style');
-        stylesheet.id = primarySelector;
-        stylesheet.appendChild(document.createTextNode(cssString));
-        container.appendChild(stylesheet);
-    } else {
-        stylesheet.innerText = cssString
-    }
+    // let primarySelector = cssString.substring(0, cssString.indexOf("{")).trim();
+    // primarySelector = primarySelector.replace(/\*/g, "all");
+    // primarySelector = primarySelector.replace(/#/g, "id-");
+    // primarySelector = primarySelector.replace(/,/g, "");
+    // let stylesheet = container.querySelector(`:scope > style[id='${primarySelector}']`)
+    // if(!stylesheet) {
+    //     stylesheet = document.createElement('style');
+    //     stylesheet.id = primarySelector;
+    //     stylesheet.appendChild(document.createTextNode(cssString));
+    //     container.appendChild(stylesheet);
+    // } else {
+    //     stylesheet.innerText = cssString
+    // }
 }
 
 window.html = function html(htmlString) {
@@ -227,8 +264,9 @@ class ObservedObject {
                         }
                     },
                     get: function() {
-                        Registry.lastState.push(key)
-                        Registry.lastState.push(instance[backingFieldName])
+                        if(Registry.lastState) {
+                            Registry.lastState = [...Registry.lastState, key, instance[backingFieldName]]
+                        }
                         return instance[backingFieldName];
                     },
                     enumerable: true,
@@ -377,7 +415,6 @@ window.Registry = class Registry {
                     },
                     get: function() {
                         Registry.lastState = [name, elem[backingFieldName]]
-                        // check which elements are observing the 
                         return elem[backingFieldName]; // Provide a getter to access the backing field value
                     },
                     enumerable: true,
@@ -423,9 +460,8 @@ window.Registry = class Registry {
         for (let param of params) {
             i++
             
-            if(i > allNames.length) {
-                console.error(`${el.prototype.constructor.name}: too many parameters for field!`)
-                return
+            if(i >= allNames.length) {
+                throw new Error(`${elem.constructor.name}: ${params.length} arguments passed in where ${allNames.length} expected!`)
             }
 
             let bareName = allNames[i].replace(/^(\$\$|\$)/, '');
@@ -464,6 +500,7 @@ window.Registry = class Registry {
         });
 
         customElements.define(tagname, el)
+        quillStyles.add(tagname)
 
         // Actual Constructor
         window[el.prototype.constructor.name] = function (...params) {
@@ -541,7 +578,9 @@ window.Registry = class Registry {
 
         if(superCallFound) {
             let modifiedStr = modifiedLines.join('\n');
-            return eval('(' + modifiedStr + ')');
+            modifiedStr = '(' + modifiedStr + ')'
+            modifiedStr += `//# sourceURL=${classObject.prototype.constructor.name}.shadow`
+            return eval(modifiedStr);
         }
 
         if(constructorFound) {
@@ -606,6 +645,21 @@ window.span = function (innerText) {
     span.innerText = innerText
     Registry.render(span)
     return span
+}
+
+/* STACKS */
+
+window.VStack = function (cb = () => {}) {
+    let nowRendering = window.rendering.last()
+    if(nowRendering.innerHTML === "") {
+        let styles =   `
+            display: flex;
+            flex-direction: column;
+        `
+        quillStyles.update(nowRendering.tagName.toLowerCase(), styles)
+        cb()
+        return nowRendering
+    }
 }
 
 /* PROTOTYPE FUNCTIONS */

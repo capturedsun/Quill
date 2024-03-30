@@ -262,4 +262,19 @@ window.testSuites.push( class testInit {
             }
         }
     }
+
+    UnneededArgumentThrowsError() {
+        register(class SidebarFile extends Shadow {
+
+        }, randomName("sb-file"))
+
+        try {
+            SidebarFile({path: "/asd"})
+            return "Did not throw error!"
+        } catch(e) {
+            if(!e.message.includes("passed in where")) {
+                throw e
+            }
+        }
+    }
 })
