@@ -122,39 +122,14 @@ window.quillStyles.update = function(tag, string) {
 
 /* STRING TRANSLATORS */
 
-window.css = function css(cssString) {
-    // let container = document.querySelector("style#quillStyles");
-    // if(!container) {
-    //     container = document.createElement('style');
-    //     container.id = "quillStyles";
-    //     document.head.appendChild(container);
-    // }
-  
-    // let primarySelector = cssString.substring(0, cssString.indexOf("{")).trim();
-    // primarySelector = primarySelector.replace(/\*/g, "all");
-    // primarySelector = primarySelector.replace(/#/g, "id-");
-    // primarySelector = primarySelector.replace(/,/g, "");
-    // let stylesheet = container.querySelector(`:scope > style[id='${primarySelector}']`)
-    // if(!stylesheet) {
-    //     stylesheet = document.createElement('style');
-    //     stylesheet.id = primarySelector;
-    //     stylesheet.appendChild(document.createTextNode(cssString));
-    //     container.appendChild(stylesheet);
-    // } else {
-    //     stylesheet.innerText = cssString
-    // }
-}
-
 window.html = function html(htmlString) {
     let container = document.createElement('div');
     container.innerHTML = htmlString;
 
-    // If there's only one child, return it directly
     if (container.children.length === 1) {
         return container.children[0];
     }
 
-    // If there are multiple children, use a DocumentFragment
     let fragment = document.createDocumentFragment();
     while (container.firstChild) {
         fragment.appendChild(container.firstChild);
@@ -303,6 +278,27 @@ window.Shadow = class Shadow extends HTMLElement {
 
 window.Registry = class Registry {
 
+    /*
+        State Reactivity [stateName].get(elem).push(attribute)
+            _observers = {
+                name: Map(
+                    <p>: [innerText, background]
+                ),
+            }
+
+        OO Reactivity: [objectName][objectField].get(elem).push(attribute)
+            $$form: extends ObservedObject {
+                _observers = {
+                    canvasPosition: Map(
+                        <p>: [position]
+                    ),
+                    path: Map(
+                        <p>: [innerText]
+                    )
+                }
+            }
+    */
+
     static initReactivity(elem, name, value) {
         let parent = window.rendering.last()
 
@@ -373,27 +369,6 @@ window.Registry = class Registry {
         const stateNames = allNames.filter(field => /^[$][^$]/.test(field)).map(str => str.substring(1));
         const observedObjectNames = allNames.filter(field => /^[$][$][^$]/.test(field)).map(str => str.substring(2));
 
-        /*
-        State Reactivity [stateName].get(elem).push(attribute)
-            _observers = {
-                name: Map(
-                    <p>: [innerText, background]
-                ),
-            }
-
-        OO Reactivity: [objectName][objectField].get(elem).push(attribute)
-            $$form: extends ObservedObject {
-                _observers = {
-                    canvasPosition: Map(
-                        <p>: [position]
-                    ),
-                    path: Map(
-                        <p>: [innerText]
-                    )
-                }
-            }
-        */
-
         function makeState(elem, stateNames, params) {
             elem._observers = {}
 
@@ -404,18 +379,21 @@ window.Registry = class Registry {
             
                 Object.defineProperty(elem, name, {
                     set: function(newValue) {
-                        // console.log(`Setting state ${name} to `, newValue);
                         elem[backingFieldName] = newValue; // Use the backing field to store the value
                         elem.setAttribute(name, typeof newValue === "object" ? "{..}" : newValue);
                         for (let [observer, properties] of elem._observers[name]) {
                             for (let property of properties) {
-                                observer[property] = newValue;
+                                if(Array.isArray(property)) {
+                                    observer[property[0]][property[1]] = newValue;
+                                } else {
+                                    observer[property] = newValue;
+                                }
                             }
                         }
                     },
                     get: function() {
                         Registry.lastState = [name, elem[backingFieldName]]
-                        return elem[backingFieldName]; // Provide a getter to access the backing field value
+                        return elem[backingFieldName];
                     },
                     enumerable: true,
                     configurable: true
@@ -455,6 +433,12 @@ window.Registry = class Registry {
 
         makeState(elem, stateNames, params)
         makeObservedObjects(elem, observedObjectNames, params)
+
+        for(let name of allNames) {
+            if(name.replace(/^\$+/, '') in elem.style) {
+                throw new Error(`Quill: Property name "${name.replace(/^\$+/, '')}" is not valid`)
+            }
+        }
 
         let i = -1
         for (let param of params) {
@@ -662,6 +646,21 @@ window.VStack = function (cb = () => {}) {
     }
 }
 
+/* SHAPES */
+
+window.Circle = function(text = "") {
+    let div = document.createElement("div")
+    div.innerText = text
+    div.style.borderRadius = "100%"
+    div.style.width = "20px"
+    div.style.height = "20px"
+    div.style.background = "black"
+    div.style.color = "white"
+    div.style.textAlign = "center"
+    Registry.render(div)
+    return div
+}
+
 /* PROTOTYPE FUNCTIONS */
 
 Array.prototype.last = function() {
@@ -709,63 +708,52 @@ HTMLElement.prototype.class = function(classNames) {
 
 /* PROTOTYPE STYLING */
 
-HTMLElement.prototype.styleVar = function(name, value) {
-    this.style.setProperty(name, value)
-    return this
-}
+function extendHTMLElementWithStyleSetters() {
+    const styleProps = Object.keys(window.getComputedStyle(document.head));
+    const filteredProps = styleProps.filter(prop => /[a-zA-Z]/.test(prop));
 
-HTMLElement.prototype.color = function(value) {
-    this.style.color = value
-    return this
+    filteredProps.forEach(prop => {
+        if(prop === "translate") return
+        HTMLElement.prototype[prop] = function(value) {
+            this.style[prop] = value;
+            Registry.initReactivity(this, ["style", prop], value);
+            return this;
+        };
+    });
 }
+extendHTMLElementWithStyleSetters();
 
-HTMLElement.prototype.background = function(value) {
-    this.style.backgroundColor = value
-    return this
-}
-
-HTMLElement.prototype.fontSize = function(value) {
-    this.style.fontSize = value
-    return this
-}
-
-HTMLElement.prototype.borderRadius = function(value) {
-    this.style.borderRadius = value
-    return this
-}
-
-HTMLElement.prototype.padding = function(direction, amount) {
+HTMLElement.prototype.padding = function(direction, value) {
     const directionName = `padding${direction.charAt(0).toUpperCase()}${direction.slice(1)}`;
-    if (typeof amount === 'number') {
-        this.style[directionName] = `${amount}px`;
+    if (typeof value === 'number') {
+        this.style[directionName] = `${value}px`;
     } else {
-        this.style[directionName] = amount;
+        this.style[directionName] = value;
     }
+    Registry.initReactivity(this, ["style", directionName], value);
     return this
 }
 
-HTMLElement.prototype.outline = function(value) {
-    this.style.outline = value
+HTMLElement.prototype.width = function(value, unit = "px") {
+    this.style.width = value + unit
+    Registry.initReactivity(this, ["style", "width"], value);
     return this
 }
 
-HTMLElement.prototype.maxWidth = function(value) {
-    this.style.maxWidth = value
+HTMLElement.prototype.height = function(value, unit = "px") {
+    this.style.height = value + unit
+    Registry.initReactivity(this, ["style", "height"], value);
     return this
 }
 
-HTMLElement.prototype.margin = function(direction, amount) {
+HTMLElement.prototype.margin = function(direction, value) {
     const directionName = `margin${direction.charAt(0).toUpperCase()}${direction.slice(1)}`;
-    if (typeof amount === 'number') {
-        this.style[directionName] = `${amount}px`;
+    if (typeof value === 'number') {
+        this.style[directionName] = `${value}px`;
     } else {
-        this.style[directionName] = amount;
+        this.style[directionName] = value;
     }
-    return this
-}
-
-HTMLElement.prototype.transform = function(value) {
-    this.style.transform = value
+    Registry.initReactivity(this, ["style", directionName], value);
     return this
 }
 
@@ -775,11 +763,12 @@ HTMLElement.prototype.positionType = function (value) {
         return;
     }
     this.style.position = value
+    Registry.initReactivity(this, ["style", "position"], value);
     return this
 }
 
 HTMLElement.prototype.position = function({x, y} = {}) {
-    if(!x || !y) {
+    if(!(typeof x === 'number') || !(typeof x === 'number')) {
         console.error("HTMLElement.position: must have valid x and y values: {x: 12, y: 23} where x and y are percentages")
         return;
     }
@@ -789,23 +778,21 @@ HTMLElement.prototype.position = function({x, y} = {}) {
     }
     this.style.left = `${x}%`
     this.style.top = `${y}%`
+    Registry.initReactivity(this, ["style", "top"], y);
+    Registry.initReactivity(this, ["style", "left"], x);
     return this
 }
-
-HTMLElement.prototype.overflow = function(value) {
-    if(!(value === "visible" || value === "hidden" || value === "clip" || value === "scroll" || value === "auto")) {
-        console.error("HTMLElement.overlflow: must have valid overflow value!")
-        return;
-    }
-    this.style.overflow = value;
-    return this
-}
-
 
 /* PROTOTYPE EVENTS */
 
 HTMLElement.prototype.onClick = function(func) {
     this.addEventListener("click", func)
+    return this
+}
+
+HTMLElement.prototype.onHover = function(cb) {
+    this.addEventListener("mouseover", () => cb(true))
+    this.addEventListener("mouseleave", () => cb(false))
     return this
 }
 

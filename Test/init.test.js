@@ -277,4 +277,20 @@ window.testSuites.push( class testInit {
             }
         }
     }
+
+    ConflictingPropertyNameThrowsError() {
+        register(class SidebarFile extends Shadow {
+            $width = 0
+
+        }, randomName("sb-file"))
+
+        try {
+            SidebarFile()
+            return "Did not throw error!"
+        } catch(e) {
+            if(!e.message.includes(`Property name "width" is not valid`)) {
+                throw e
+            }
+        }
+    }
 })
