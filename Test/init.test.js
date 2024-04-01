@@ -171,6 +171,25 @@ window.testSuites.push( class testInit {
         }
     }
 
+    CannotAddUndefinedPropertiesAfterDefaultConstructor() {
+        register(class File extends Shadow {
+
+            render = () => {
+                p("boi")
+            }
+        }, randomName("file"))
+
+        try {
+            const file = File()
+            file.hey = "unallowed"
+            return "Did not throw error!"
+        } catch(e) { 
+            if(!e.message.includes("extensible")) {
+                throw e
+            }
+        }
+    }
+
     NonStateFieldsGetSet() {
         register(class File extends Shadow {
             nonStateField

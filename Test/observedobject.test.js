@@ -26,6 +26,14 @@ window.testSuites.push( class testObservedObject {
         }
     }
 
+    ConstructorWorks() {
+        return "not done"
+    }
+
+    NotExtensible() {
+        return "not done"
+    }
+
     // MustInitAllFields() {
     //     class Form extends ObservedObject {
     //         id

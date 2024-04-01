@@ -550,7 +550,7 @@ window.Registry = class Registry {
     
             if (constructorFound && trimmedLine.startsWith('super(') && !superCallFound) {
                 superCallFound = true;
-                modifiedLines.push(`    window.Registry.construct(this, window.Registry.currentStateVariables, ...window.Registry.currentParams);`);
+                modifiedLines.push(`    window.Registry.construct(this);`);
             }
     
             if (constructorFound && braceDepth === 1 && superCallFound && !constructorEndFound) {
@@ -574,11 +574,13 @@ window.Registry = class Registry {
             constructor(...params) {
                 super(...params)
                 window.Registry.construct(this)
+                Object.preventExtensions(this);
+                window.Registry.testInitialized(this);
             }
             `
             let closingBracket = str.lastIndexOf("}");
             str = str.slice(0, closingBracket - 1) + constructorString + "\n}"
-            return eval('(' + str + ')');
+            return eval('(' + str + `) //# sourceURL=${classObject.prototype.constructor.name}.shadow`);
         }
     }
 }
@@ -619,7 +621,7 @@ window.p = function p(innerText) {
 
 window.div = function (innerText) {
     let div = document.createElement("div")
-    div.innerText = innerText
+    div.innerText = innerText ?? ""
     Registry.render(div)
     return div
 }
@@ -639,6 +641,19 @@ window.VStack = function (cb = () => {}) {
         let styles =   `
             display: flex;
             flex-direction: column;
+        `
+        quillStyles.update(nowRendering.tagName.toLowerCase(), styles)
+        cb()
+        return nowRendering
+    }
+}
+
+window.HStack = function (cb = () => {}) {
+    let nowRendering = window.rendering.last()
+    if(nowRendering.innerHTML === "") {
+        let styles =   `
+            display: flex;
+            flex-direction: row;
         `
         quillStyles.update(nowRendering.tagName.toLowerCase(), styles)
         cb()
@@ -746,6 +761,41 @@ HTMLElement.prototype.height = function(value, unit = "px") {
     return this
 }
 
+function checkStyle(el) {
+    let computed = window.getComputedStyle(el).position
+    if(!(computed === "absolute" || computed === "fixed")) {
+        el.style.position = "absolute"
+    }
+}
+
+HTMLElement.prototype.x = function(value, unit = "px") {
+    checkStyle(this)
+    this.style.left = value + unit
+    Registry.initReactivity(this, ["style", "left"], value);
+    return this
+}
+
+HTMLElement.prototype.y = function(value, unit = "px") {
+    checkStyle(this)
+    this.style.top = value + unit
+    Registry.initReactivity(this, ["style", "top"], value);
+    return this
+}
+
+HTMLElement.prototype.xRight = function(value, unit = "px") {
+    checkStyle(this)
+    this.style.right = value + unit
+    Registry.initReactivity(this, ["style", "right"], value);
+    return this
+}
+
+HTMLElement.prototype.yBottom = function(value, unit = "px") {
+    checkStyle(this)
+    this.style.bottom = value + unit
+    Registry.initReactivity(this, ["style", "bottom"], value);
+    return this
+}
+
 HTMLElement.prototype.margin = function(direction, value) {
     const directionName = `margin${direction.charAt(0).toUpperCase()}${direction.slice(1)}`;
     if (typeof value === 'number') {
@@ -764,22 +814,6 @@ HTMLElement.prototype.positionType = function (value) {
     }
     this.style.position = value
     Registry.initReactivity(this, ["style", "position"], value);
-    return this
-}
-
-HTMLElement.prototype.position = function({x, y} = {}) {
-    if(!(typeof x === 'number') || !(typeof x === 'number')) {
-        console.error("HTMLElement.position: must have valid x and y values: {x: 12, y: 23} where x and y are percentages")
-        return;
-    }
-    let computed = window.getComputedStyle(this).position
-    if(!(computed === "absolute" || computed === "fixed")) {
-        this.style.position = "absolute"
-    }
-    this.style.left = `${x}%`
-    this.style.top = `${y}%`
-    Registry.initReactivity(this, ["style", "top"], y);
-    Registry.initReactivity(this, ["style", "left"], x);
     return this
 }
 
