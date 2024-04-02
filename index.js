@@ -213,7 +213,7 @@ class ObservedObject {
         this._observers = {}
     }
 
-    static decode(obj) {
+    static create(obj = {}) {
         let instance = new this()
 
         Object.keys(instance).forEach((key) => {
@@ -221,6 +221,7 @@ class ObservedObject {
                 key = key.slice(1)
                 instance._observers[key] = new Map()
                 const backingFieldName = `_${key}`;
+                instance[backingFieldName] = instance["$" + key]
                 Object.defineProperty(instance, key, {
                     set: function(newValue) {
                         if(Array.isArray(newValue) && newValue.parent === undefined) {
@@ -254,7 +255,7 @@ class ObservedObject {
             if(obj[key]) {
                 instance[key] = obj[key]
             } else {
-                if(!instance[key]) {
+                if(instance[key] === undefined || instance[key] === null) {
                     throw new Error(`ObservedObject: Non-default value "${key}" must be initialized!`)
                 }
             }
@@ -672,6 +673,18 @@ window.Circle = function(text = "") {
     div.style.background = "black"
     div.style.color = "white"
     div.style.textAlign = "center"
+    Registry.render(div)
+    return div
+}
+
+window.Triangle = function() {
+    let div = document.createElement("div")
+    div.style.cssText += `
+        width: 20px;
+        height: 17.3px;
+        clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+        background: black;
+    `
     Registry.render(div)
     return div
 }

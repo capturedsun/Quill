@@ -8,7 +8,7 @@ window.testSuites.push( class testObservedObject {
         }
 
         try {
-            let obj = Form.decode({id: "123"})
+            let obj = Form.create({id: "123"})
             return "Not implemented"
         } catch {}
     }
@@ -20,14 +20,23 @@ window.testSuites.push( class testObservedObject {
             $canvasPosition
         }
 
-        let obj = Form.decode({id: "123", path: "/", canvasPosition: "25|25"})
+        let obj = Form.create({id: "123", path: "/", canvasPosition: "25|25"})
         if(!(obj && obj["id"] === "123" && obj["path"] === "/" && obj["canvasPosition"] === "25|25")) {
             return "Not all fields initialized!"
         }
     }
 
-    ConstructorWorks() {
-        return "not done"
+    DefaultValueWorks() {
+        class WindowState extends ObservedObject {
+            $sidebarOut = false
+        }
+
+        let obj = WindowState.create()
+        console.log(obj)
+
+        if(obj.sidebarOut !== false) {
+            return "Default field not set"
+        }
     }
 
     NotExtensible() {
@@ -41,7 +50,7 @@ window.testSuites.push( class testObservedObject {
     //         $canvasPosition
     //     }
 
-    //     let obj = Form.decode({id: "123", path: "/", canvasPosition: "25|25"})
+    //     let obj = Form.create({id: "123", path: "/", canvasPosition: "25|25"})
     //     if(!(obj && obj["id"] === "123" && obj["path"] === "/" && obj["canvasPosition"] === "25|25")) {
     //         return "Not all fields initialized!"
     //     }
@@ -55,7 +64,7 @@ window.testSuites.push( class testObservedObject {
     //     }
 
     //     let json = {id: "123", path: "/", canvasPosition: "25|25"}
-    //     let obj = Form.decode({id: "123", path: "/", canvasPosition: "25|25"})
+    //     let obj = Form.create({id: "123", path: "/", canvasPosition: "25|25"})
     //     json.id = "456"
     //     if(!(obj["id"] === "456")) {
     //         return "Change to original object was not reflected!"

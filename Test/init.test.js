@@ -272,7 +272,7 @@ window.testSuites.push( class testInit {
         }
         
         try {
-            let space = ChildSpace(Form.decode({path: "/asd"}))
+            let space = ChildSpace(Form.create({path: "/asd"}))
         } catch(e) {
             if(e.message.includes("Cannot read properties of undefined (reading 'path')")) {
                 return "Form did not get initialized!"

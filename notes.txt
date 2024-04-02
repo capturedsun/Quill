@@ -1,3 +1,32 @@
+
+
+
+
+Shadow.File = (param) => new class {
+    trippy = "asd"
+
+    constructor() {
+        console.log(param)
+    }
+}
+
+console.log(Shadow.File("as"))
+
+
+ObservedObject.WindowState = () => ({
+    sidebarOut: false,
+    children: null
+})
+let windowState = ObservedObject.WindowState()
+console.log(windowState)
+
+
+Shadow(class File {
+
+}, "file-")
+
+
+
 3/16
 const TestClass = () => new class {
     constructor() {

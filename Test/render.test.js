@@ -79,7 +79,7 @@ window.testSuites.push( class testRender {
         }
 
         class File extends Shadow {
-            $$form = Form.decode({id: "123", path: "/", canvasPosition: "25|25"})
+            $$form = Form.create({id: "123", path: "/", canvasPosition: "25|25"})
 
             render = () => {
                 p(this.form.path)
@@ -101,7 +101,7 @@ window.testSuites.push( class testRender {
             $canvasPosition
         }
 
-        let object = Form.decode({id: "123", path: "/", canvasPosition: "25|25"});
+        let object = Form.create({id: "123", path: "/", canvasPosition: "25|25"});
 
         register(class File extends Shadow {
             $$form
@@ -132,7 +132,7 @@ window.testSuites.push( class testRender {
             $children
         }
 
-        let object = Form.decode({id: "123", children: [{path: "berry"}, {path: "blue"}]});
+        let object = Form.create({id: "123", children: [{path: "berry"}, {path: "blue"}]});
 
         register(class File extends Shadow {
             $$form
