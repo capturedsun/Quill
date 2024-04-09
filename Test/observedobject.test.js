@@ -39,9 +39,12 @@ window.testSuites.push( class testObservedObject {
         }
     }
 
+    // throw some sort of warning if a global OO is accessed without "this"
+
     NotExtensible() {
         return "not done"
     }
+
 
     // MustInitAllFields() {
     //     class Form extends ObservedObject {

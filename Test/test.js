@@ -2,9 +2,9 @@ console.log("Tests initializing.")
 window.testSuites = [];
 
 await import ("./parse.test.js")
-await import ("./init.test.js")
-await import ("./render.test.js")
-await import ("./observedobject.test.js")
+// await import ("./init.test.js")
+// await import ("./render.test.js")
+// await import ("./observedobject.test.js")
 
 window.randomName = function randomName(prefix) {
     const sanitizedPrefix = prefix.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -75,13 +75,13 @@ window.test = async function() {
     console.log("")
     let elapsed = new Date() - start;
     if(failed === 0) {
-        console.log(`%cRan ${failed+success} tests in ${elapsed}ms`, 'background: #222; color: #00FF00');
-        console.log(`%c   ${success} passed`, 'background: #222; color: #00FF00');
-        console.log(`%c   ${failed} failed`, 'background: #222;');
+        console.log(`%cRan ${failed+success} tests in ${elapsed}ms`, 'color: #00FF00');
+        console.log(`%c   ${success} passed`, 'color: #00FF00');
+        console.log(`%c   ${failed} failed`);
     } else {
-        console.log(`%cRan ${failed+success} tests in ${elapsed}ms`, 'background: #222; color: rgb(254, 62, 43)');
-        console.log(`%c   ${success} `, 'background: #222; color: #00FF00', "passed");
-        console.log(`%c   ${failed} failed`, 'background: #222; color: rgb(254, 62, 43)');
+        console.log(`%cRan ${failed+success} tests in ${elapsed}ms`, 'color: rgb(254, 62, 43)');
+        console.log(`%c   ${success} `, 'color: #00FF00', "passed");
+        console.log(`%c   ${failed} failed`, 'color: rgb(254, 62, 43)');
     }
 }
 

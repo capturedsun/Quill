@@ -308,7 +308,7 @@ window.Registry = class Registry {
             if(!objName) return;
 
             let valueCheck = parent[objName][objField]
-            if(valueCheck && valueCheck === value) {
+            if(valueCheck !== undefined && valueCheck === value) {
                 if(!parent[objName]._observers[objField].get(elem)) {
                     parent[objName]._observers[objField].set(elem, [])
                 }
@@ -380,14 +380,14 @@ window.Registry = class Registry {
             
                 Object.defineProperty(elem, name, {
                     set: function(newValue) {
-                        elem[backingFieldName] = newValue; // Use the backing field to store the value
+                        elem[backingFieldName] = newValue;
                         elem.setAttribute(name, typeof newValue === "object" ? "{..}" : newValue);
-                        for (let [observer, properties] of elem._observers[name]) {
+                        for (let [element, properties] of elem._observers[name]) {
                             for (let property of properties) {
                                 if(Array.isArray(property)) {
-                                    observer[property[0]][property[1]] = newValue;
+                                    element[property[0]][property[1]] = newValue;
                                 } else {
-                                    observer[property] = newValue;
+                                    element[property] = newValue;
                                 }
                             }
                         }
@@ -493,95 +493,6 @@ window.Registry = class Registry {
             let elIncarnate = new el(...params)
             Registry.render(elIncarnate)
             return elIncarnate
-        }
-    }
-
-    static parseClassFields(classObject) {
-        let str = classObject.toString();
-        const lines = str.split('\n');
-        const fields = [];
-        let braceDepth = 0; // Tracks the depth of curly braces to identify when we're inside a function/method
-    
-        for (let line of lines) {
-            const trimmedLine = line.trim();
-    
-            // Update braceDepth based on the current line
-            braceDepth += (trimmedLine.match(/{/g) || []).length;
-            braceDepth -= (trimmedLine.match(/}/g) || []).length;
-    
-            // Check if the line is outside any function/method (top-level within the class)
-            if (braceDepth === 1) {
-                // Attempt to match a class field declaration with or without initialization
-                const fieldMatch = trimmedLine.match(/^([a-zA-Z_$][0-9a-zA-Z_$]*)\s*(=|;|\n|$)/);
-                if (fieldMatch) {
-                    fields.push(fieldMatch[1]);
-                }
-            }
-    
-            // If we encounter the constructor, stop the parsing as we're only interested in fields above it
-            if (trimmedLine.startsWith('constructor')) {
-                break;
-            }
-        }
-    
-        return fields;
-    }
-
-    static parseConstructor(classObject) {
-        let str = classObject.toString();
-        const lines = str.split('\n');
-        let modifiedLines = [];
-        let braceDepth = 0;
-        let constructorFound = false
-        let superCallFound = false;
-        let constructorEndFound = false;
-    
-        for (let i = 0; i < lines.length; i++) {
-            let line = lines[i];
-            const trimmedLine = line.trim();
-    
-            modifiedLines.push(line);
-    
-            braceDepth += (trimmedLine.match(/{/g) || []).length;
-            braceDepth -= (trimmedLine.match(/}/g) || []).length;
-    
-            if (trimmedLine.startsWith('constructor(')) {
-                constructorFound = true;
-            }
-    
-            if (constructorFound && trimmedLine.startsWith('super(') && !superCallFound) {
-                superCallFound = true;
-                modifiedLines.push(`    window.Registry.construct(this);`);
-            }
-    
-            if (constructorFound && braceDepth === 1 && superCallFound && !constructorEndFound) {
-                modifiedLines.splice(modifiedLines.length - 1, 0, '    Object.preventExtensions(this);');
-                modifiedLines.splice(modifiedLines.length - 1, 0, '    window.Registry.testInitialized(this);');
-                constructorEndFound = true
-            }
-        }
-
-        if(superCallFound) {
-            let modifiedStr = modifiedLines.join('\n');
-            modifiedStr = '(' + modifiedStr + ')'
-            modifiedStr += `//# sourceURL=${classObject.prototype.constructor.name}.shadow`
-            return eval(modifiedStr);
-        }
-
-        if(constructorFound) {
-            throw new Error("Quill: Constructor must have super()! " + lines[0])
-        } else {
-            let constructorString = `
-            constructor(...params) {
-                super(...params)
-                window.Registry.construct(this)
-                Object.preventExtensions(this);
-                window.Registry.testInitialized(this);
-            }
-            `
-            let closingBracket = str.lastIndexOf("}");
-            str = str.slice(0, closingBracket - 1) + constructorString + "\n}"
-            return eval('(' + str + `) //# sourceURL=${classObject.prototype.constructor.name}.shadow`);
         }
     }
 }
@@ -843,5 +754,206 @@ HTMLElement.prototype.onHover = function(cb) {
     return this
 }
 
+/* PARSE */
+
+Registry.parseClassFields = function(classObject) {
+    let str = classObject.toString();
+    const lines = str.split('\n');
+    const fields = [];
+    let braceDepth = 0; // Tracks the depth of curly braces to identify when we're inside a function/method
+
+    for (let line of lines) {
+        const trimmedLine = line.trim();
+
+        // Update braceDepth based on the current line
+        braceDepth += (trimmedLine.match(/{/g) || []).length;
+        braceDepth -= (trimmedLine.match(/}/g) || []).length;
+
+        // Check if the line is outside any function/method (top-level within the class)
+        if (braceDepth === 1) {
+            // Attempt to match a class field declaration with or without initialization
+            const fieldMatch = trimmedLine.match(/^([a-zA-Z_$][0-9a-zA-Z_$]*)\s*(=|;|\n|$)/);
+            if (fieldMatch) {
+                fields.push(fieldMatch[1]);
+            }
+        }
+
+        // If we encounter the constructor, stop the parsing as we're only interested in fields above it
+        if (trimmedLine.startsWith('constructor')) {
+            break;
+        }
+    }
+
+    return fields;
+}
+
+Registry.parseConstructor = function(classObject) {
+    let str = classObject.toString();
+    const lines = str.split('\n');
+    let modifiedLines = [];
+    let braceDepth = 0;
+    let constructorFound = false
+    let superCallFound = false;
+    let constructorEndFound = false;
+
+    for (let i = 0; i < lines.length; i++) {
+        let line = lines[i];
+        const trimmedLine = line.trim();
+
+        modifiedLines.push(line);
+
+        braceDepth += (trimmedLine.match(/{/g) || []).length;
+        braceDepth -= (trimmedLine.match(/}/g) || []).length;
+
+        if (trimmedLine.startsWith('constructor(')) {
+            constructorFound = true;
+        }
+
+        if (constructorFound && trimmedLine.startsWith('super(') && !superCallFound) {
+            superCallFound = true;
+            modifiedLines.push(`    window.Registry.construct(this);`);
+        }
+
+        if (constructorFound && braceDepth === 1 && superCallFound && !constructorEndFound) {
+            modifiedLines.splice(modifiedLines.length - 1, 0, '    Object.preventExtensions(this);');
+            modifiedLines.splice(modifiedLines.length - 1, 0, '    window.Registry.testInitialized(this);');
+            constructorEndFound = true
+        }
+    }
+
+    if(superCallFound) {
+        let modifiedStr = modifiedLines.join('\n');
+        modifiedStr = '(' + modifiedStr + ')'
+        modifiedStr += `//# sourceURL=${classObject.prototype.constructor.name}.shadow`
+        return eval(modifiedStr);
+    }
+
+    if(constructorFound) {
+        throw new Error("Quill: Constructor must have super()! " + lines[0])
+    } else {
+        let constructorString = `
+        constructor(...params) {
+            super(...params)
+            window.Registry.construct(this)
+            Object.preventExtensions(this);
+            window.Registry.testInitialized(this);
+        }
+        `
+        let closingBracket = str.lastIndexOf("}");
+        str = str.slice(0, closingBracket - 1) + constructorString + "\n}"
+        return eval('(' + str + `) //# sourceURL=${classObject.prototype.constructor.name}.shadow`);
+    }
+}
+
+Registry.getRender = function(classObject) {
+    const classString = classObject.toString();
+
+    const regular = /render\s*\(\s*\)\s*\{/;
+    const arrow = /render\s*=\s*\(\s*\)\s*=>\s*\{/;
+    const matches = classString.match(regular) || classString.match(arrow);
+
+    if(matches && matches.length === 1) {
+        return classString.substring(matches.index)
+    } else {
+        console.error("Quill: render funcion not defined properly!")
+    }
+}
+
+
+Registry.parseRender = function(classObject) {
+    let str = Registry.getRender(classObject.toString()).replace(/\s/g, "");
+    console.log(str)
+    let functionStack = []
+    let i = str.indexOf("{");
+
+    let firstEl = str.copyTo("(", i)
+    if(!firstEl) {
+        console.log("Empty render function")
+        return
+    } else {
+        i += firstEl.length + 1
+    }
+
+    if(firstEl.includes("Stack")) {
+        parseArrowFunction(str, i)
+    }
+
+    return usage;
+}
+
+function parseArrowFunction(str, i) {
+    i += str.copyTo("{", i).length + 1
+    console.log(str[i])
+    let firstEl = str.copyTo("(", i)
+    console.log(firstEl)
+}
+
+function firstParam(str, i) {
+    console.log(str[i])
+    switch(str[i]) {
+        case "(":
+            console.log("function")
+            break;
+        case "\"":
+            console.log("string")
+            break;
+        default:
+            if (!isNaN(input)) {
+                console.log("Number");
+            } else {
+                console.log("Variable");
+            }
+    }
+}
+
+String.prototype.copyTo = function(char, i=0) {
+    let copied = ""
+    while(this[i]) {
+        if(this[i] === char) {
+            break;
+        }
+        copied += this[i]
+
+        i++
+    }
+    return copied
+}
+
 window.register = Registry.register
 window.rendering = []
+
+
+// const usage = [];
+// const lines = renderFunctionToClassEnd.split('\n');
+
+// let currentFunction = null;
+// let currentFunctionChain = []; // To keep track of nested function names
+
+// for (const line of lines) {
+//     const functionMatch = line.match(/^\s*([a-zA-Z_$][0-9a-zA-Z_$]*)\s*=\s*\(\s*\)\s*=>\s*{/);
+//     if (functionMatch) {
+//         currentFunction = functionMatch[1];
+//         currentFunctionChain.push(currentFunction);
+//     }
+
+//     if (line.includes('this')) {
+//         if (currentFunction) {
+//             const thisUsage = line.match(/this\.[a-zA-Z_$][0-9a-zA-Z_$]*(?:\.[a-zA-Z_$][0-9a-zA-Z_$]*)*/g);
+//             if (thisUsage) {
+//                 for (const usageItem of thisUsage) {
+//                     const propertyChain = usageItem.replace('this.', '');
+//                     const completeChain = [...currentFunctionChain, propertyChain];
+//                     usage.push(completeChain);
+//                 }
+//             }
+//         } else {
+//             const thisUsage = line.match(/this\.[a-zA-Z_$][0-9a-zA-Z_$]*/g);
+//             if (thisUsage) {
+//                 for (const usageItem of thisUsage) {
+//                     const propertyChain = usageItem.replace('this.', '');
+//                     usage.push([propertyChain]);
+//                 }
+//             }
+//         }
+//     }
+// }
