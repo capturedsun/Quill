@@ -21,6 +21,10 @@ document.body.append(
 )
 ```
 
+## Needs Support:
+Ternaries within render()
+Other statements within render()
+
 ## Boilerplate:
 - ```*html```: Type in an HTML file and select the suggestion to create HTML boilerplate. 
 - ```*element```: Type in a JS file and select the suggestion to create JS Custom Element boilerplate.

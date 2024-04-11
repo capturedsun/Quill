@@ -234,7 +234,11 @@ class ObservedObject {
                                 if(property === "children") {
                                     Registry.rerender(observer)
                                 } else {
-                                    observer[property] = newValue;
+                                    if(Array.isArray(property)) {
+                                        observer[property[0]][property[1]] = newValue;
+                                    } else {
+                                        observer[property] = newValue;
+                                    }
                                 }
                             }
                         }
@@ -499,13 +503,6 @@ window.Registry = class Registry {
 
 /* DEFAULT WRAPPERS */
 
-window.ForEach = function (arr, cb) {
-    Registry.initReactivity(window.rendering.last(), "children", arr)
-    arr.forEach((el, i) => {
-        cb(el, i)
-    })
-}
-
 window.a = function a({ href, name=href } = {}) {
     let link = document.createElement("a")
     link.setAttribute('href', href);
@@ -545,7 +542,14 @@ window.span = function (innerText) {
     return span
 }
 
-/* STACKS */
+/* CUSTOM */
+
+window.ForEach = function (arr, cb) {
+    Registry.initReactivity(window.rendering.last(), "children", arr)
+    arr.forEach((el, i) => {
+        cb(el, i)
+    })
+}
 
 window.VStack = function (cb = () => {}) {
     let nowRendering = window.rendering.last()
@@ -859,64 +863,85 @@ Registry.getRender = function(classObject) {
     }
 }
 
+Registry.parseRender = class ParseRender {
+    str;
+    i = 0;
+    functionStack;
+    result;
 
-Registry.parseRender = function(classObject) {
-    let str = Registry.getRender(classObject.toString()).replace(/\s/g, "");
-    console.log(str)
-    let functionStack = []
-    let i = str.indexOf("{");
+    /*
+        [
+            [Function scope, value used]
+            ["VStack.ForEach", "form.children"],
+            ["VStack.ForEach.SidebarFile", "form.color"]
+            ["VStack.x", windowState.sidebarOut]
+        ]
+    */
 
-    let firstEl = str.copyTo("(", i)
-    if(!firstEl) {
-        console.log("Empty render function")
-        return
-    } else {
-        i += firstEl.length + 1
+    constructor(classObject) {
+        this.str = Registry.getRender(classObject.toString()).replace(/\s/g, "");
+        this.functionStack = ""
+        this.result = []
     }
 
-    if(firstEl.includes("Stack")) {
-        parseArrowFunction(str, i)
+    parse() {
+        this.parseFunction()
+        return this.result
     }
 
-    return usage;
-}
+    parseFunction() {
+        console.log(this.str)
+        this.copyTo("{")
+        let firstEl = this.copyTo("(")
+        console.log(firstEl)
 
-function parseArrowFunction(str, i) {
-    i += str.copyTo("{", i).length + 1
-    console.log(str[i])
-    let firstEl = str.copyTo("(", i)
-    console.log(firstEl)
-}
-
-function firstParam(str, i) {
-    console.log(str[i])
-    switch(str[i]) {
-        case "(":
-            console.log("function")
-            break;
-        case "\"":
-            console.log("string")
-            break;
-        default:
-            if (!isNaN(input)) {
-                console.log("Number");
-            } else {
-                console.log("Variable");
-            }
-    }
-}
-
-String.prototype.copyTo = function(char, i=0) {
-    let copied = ""
-    while(this[i]) {
-        if(this[i] === char) {
-            break;
+        if(!firstEl) {
+            console.log("Empty render function")
+            return
         }
-        copied += this[i]
-
-        i++
+        
+        if(firstEl.includes("Stack")) {
+            this.parseFunction()
+        } else if(firstEl.includes("ForEach")) {
+            let array = this.copyTo(",")
+            if(array.includes("this")) {
+                console.log(this.result)
+                this.result.push([this.functionStack + "ForEach", array.replace("this.", "")])
+            }
+            this.parseFunction()
+        } else if(firstEl === "switch") {
+            
+        } else if(firstEl === ("if")) {
+            console.log("if")
+        }
     }
-    return copied
+
+    copyTo = function(char) {
+        this.i = this.str.indexOf(char)
+        let copied = this.str.substring(0, this.str.indexOf(char));
+        this.str = this.str.slice(this.i + 1); // Update the string to exclude the copied part and the character
+    
+        return copied
+    }
+
+    // firstParam(str, i, stack, total) {
+    //     console.log(str[i])
+    //     switch(str[i]) {
+    //         case "(":
+    //             console.log("function")
+    //             break;
+    //         case "\"":
+    //             console.log("string")
+    //             break;
+    //         default:
+    //             if (!isNaN(input)) {
+    //                 console.log("Number");
+    //             } else {
+    //                 console.log("Variable");
+    //             }
+    //     }
+    // }
+
 }
 
 window.register = Registry.register

@@ -149,6 +149,13 @@ window.testSuites.push( class testParse {
         window.Registry.parseConstructor(Space)
     }
 
+    // CopyTo() {
+    //     let str = "render=()=>{VStack(()=>{"
+    //     let ret = str.copyTo("{")
+
+    //     if(ret !== "render=()=>") return "Copy 1 failed!"
+    // }
+
     ParseRender() {
         class Sidebar extends Shadow {
             $$windowState = windowState
@@ -177,7 +184,7 @@ window.testSuites.push( class testParse {
             }
         }
         
-        let result = Registry.parseRender(Sidebar)
+        let result = new Registry.parseRender(Sidebar).parse()
         console.log(result)
 
         let expectedOutput = "[[VStack.ForEach, form.children], [VStack.x, windowState.sidebarOut]]"
@@ -185,14 +192,6 @@ window.testSuites.push( class testParse {
         if(JSON.stringify(result) !== JSON.stringify(expectedOutput)) {
             return "Result does not match expected array!"
         }
-    }
-
-    CopyTo() {
-        let str = "render=()=>{VStack(()=>{"
-        let ret = str.copyTo("{")
-        console.log(ret)
-
-        if(ret !== "render=()=>") return "Copy 1 failed!"
     }
 
 })

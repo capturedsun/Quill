@@ -2,9 +2,9 @@ console.log("Tests initializing.")
 window.testSuites = [];
 
 await import ("./parse.test.js")
-// await import ("./init.test.js")
-// await import ("./render.test.js")
-// await import ("./observedobject.test.js")
+await import ("./init.test.js")
+await import ("./render.test.js")
+await import ("./observedobject.test.js")
 
 window.randomName = function randomName(prefix) {
     const sanitizedPrefix = prefix.toLowerCase().replace(/[^a-z0-9]/g, '');
