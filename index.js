@@ -750,6 +750,10 @@ HTMLElement.prototype.onClick = function(func) {
     this.addEventListener("click", func)
     return this
 }
+HTMLElement.prototype.onRightClick = function(func) {
+    this.addEventListener("contextmenu", func)
+    return this
+}
 
 HTMLElement.prototype.onHover = function(cb) {
     this.addEventListener("mouseover", () => cb(true))
