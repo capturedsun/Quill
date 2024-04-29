@@ -194,4 +194,6 @@ window.testSuites.push( class testParse {
         }
     }
 
+    // disallow addEventListener inside of render
+
 })

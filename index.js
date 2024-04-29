@@ -120,23 +120,6 @@ window.quillStyles.update = function(tag, string) {
     sheet.insertRule(`${tag} { ${string} }`, sheet.cssRules.length);
 }
 
-/* STRING TRANSLATORS */
-
-window.html = function html(htmlString) {
-    let container = document.createElement('div');
-    container.innerHTML = htmlString;
-
-    if (container.children.length === 1) {
-        return container.children[0];
-    }
-
-    let fragment = document.createDocumentFragment();
-    while (container.firstChild) {
-        fragment.appendChild(container.firstChild);
-    }
-
-    return fragment;
-};
 
 /* COMPATIBILITY */
 
@@ -503,6 +486,24 @@ window.Registry = class Registry {
 
 /* DEFAULT WRAPPERS */
 
+window.html = function html(htmlString) {
+    let container = document.createElement('div');
+    container.innerHTML = htmlString;
+
+    if (container.children.length === 1) {
+        Registry.render(container.children[0])
+        return container.children[0];
+    }
+
+    let fragment = document.createDocumentFragment();
+    while (container.firstChild) {
+        fragment.appendChild(container.firstChild);
+    }
+
+    Registry.render(fragment)
+    return fragment;
+};
+
 window.a = function a({ href, name=href } = {}) {
     let link = document.createElement("a")
     link.setAttribute('href', href);
@@ -577,6 +578,14 @@ window.HStack = function (cb = () => {}) {
     }
 }
 
+window.ZStack = function (cb = () => {}) {
+    let nowRendering = window.rendering.last()
+    if(nowRendering.innerHTML === "") {
+        cb()
+        return nowRendering
+    }
+}
+
 /* SHAPES */
 
 window.Circle = function(text = "") {
@@ -602,20 +611,6 @@ window.Triangle = function() {
     `
     Registry.render(div)
     return div
-}
-
-window.Button = function(content = "") {
-    let div = document.createElement("div");
-    div.innerHTML = content;
-    div.style.color = "white";
-    div.style.textAlign = "center";
-    div.style.display = "flex";
-    div.style.alignItems = "center";
-    div.style.justifyContent = "center";
-    div.style.cursor = "pointer";
-
-    Registry.render(div);
-    return div;
 }
 
 /* PROTOTYPE FUNCTIONS */
@@ -648,7 +643,7 @@ HTMLElement.prototype.endingTag = function() {
     return `</${tag}>`;
 }
 
-HTMLElement.prototype.render = function (...els) {
+Element.prototype.render = function (...els) {
     if(els.length > 0) {
         this.innerHTML = ""
         els.forEach((el) => {
