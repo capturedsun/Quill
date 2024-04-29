@@ -604,6 +604,20 @@ window.Triangle = function() {
     return div
 }
 
+window.Button = function(content = "") {
+    let div = document.createElement("div");
+    div.innerHTML = content;
+    div.style.color = "white";
+    div.style.textAlign = "center";
+    div.style.display = "flex";
+    div.style.alignItems = "center";
+    div.style.justifyContent = "center";
+    div.style.cursor = "pointer";
+
+    Registry.render(div);
+    return div;
+}
+
 /* PROTOTYPE FUNCTIONS */
 
 Array.prototype.last = function() {
