@@ -675,6 +675,10 @@ function extendHTMLElementWithStyleSetters() {
 extendHTMLElementWithStyleSetters();
 
 HTMLElement.prototype.padding = function(direction, value) {
+    if(!value) {
+        this.style.padding = direction;
+    }
+
     const directionName = `padding${direction.charAt(0).toUpperCase()}${direction.slice(1)}`;
     if (typeof value === 'number') {
         this.style[directionName] = `${value}px`;
