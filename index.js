@@ -779,7 +779,7 @@ HTMLElement.prototype.positionType = function (value) {
 /* PROTOTYPE EVENTS */
 
 HTMLElement.prototype.onAppear = function(func) {
-    func()
+    func(this)
     return this
 }
 HTMLElement.prototype.onClick = function(func) {
