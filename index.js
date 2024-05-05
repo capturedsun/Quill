@@ -583,6 +583,14 @@ window.VStack = function (cb = () => {}) {
         quillStyles.update(nowRendering.tagName.toLowerCase(), styles)
         cb()
         return nowRendering
+    } else {
+        let div = document.createElement("div")
+        div.classList.add("VStack")
+        div.style.display = "flex"
+        div.style.flexDirection = "column"
+        Registry.render(div)
+        cb()
+        return div
     }
 }
 
