@@ -720,6 +720,12 @@ HTMLElement.prototype.height = function(value, unit = "px") {
     return this
 }
 
+HTMLElement.prototype.fontSize = function(value, unit = "px") {
+    this.style.fontSize = value + unit
+    Registry.initReactivity(this, ["style", "fontSize"], value);
+    return this
+}
+
 function checkStyle(el) {
     let computed = window.getComputedStyle(el).position
     if(!(computed === "absolute" || computed === "fixed")) {
