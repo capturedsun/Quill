@@ -287,11 +287,11 @@ window.Registry = class Registry {
             }
     */
 
-    static initReactivity(elem, name, value) {
-        let parent = window.rendering.last()
-        if(!Registry.lastState) {
+    static initReactivity(elem, attr, value) {
+        if(!Registry.lastState || Registry.lastState.length === 0) {
             return
         }
+        let parent = window.rendering.last()
 
         if(Registry.lastState.length === 3) {
             let [objName, objField, fieldValue] = Registry.lastState
@@ -303,19 +303,26 @@ window.Registry = class Registry {
                     parent[objName]._observers[objField].set(elem, [])
                 }
                 let properties = parent[objName]._observers[objField].get(elem)
-                if(!properties.includes(name)) {
-                    properties.push(name)
+                if(!properties.includes(attr)) {
+                    properties.push(attr)
                 }
             }
         } else {
             let [stateUsed, stateValue] = Registry.lastState
             if(!stateUsed) return;
-            
-            if(stateUsed && parent[stateUsed] === value) {
+
+            if(parent[stateUsed] === value) {
                 if(!parent._observers[stateUsed].get(elem)) {
                     parent._observers[stateUsed].set(elem, [])
                 }
-                parent._observers[stateUsed].get(elem).push(name)
+                parent._observers[stateUsed].get(elem).push(attr)
+            } else {
+                // TODO: Enable this code to get the dynamic value to be called when state changes
+                // console.log('not equal to the value')
+                // const dynamicFunction = new Function(expressionString);
+                // parent.getValue = dynamicFunction;
+                // const boundFunction = parent.getValue.bind(parent);
+                // let value = parent.getValue()
             }
         }
         Registry.lastState = []
@@ -363,6 +370,71 @@ window.Registry = class Registry {
         const stateNames = allNames.filter(field => /^[$][^$]/.test(field)).map(str => str.substring(1));
         const observedObjectNames = allNames.filter(field => /^[$][$][^$]/.test(field)).map(str => str.substring(2));
 
+        function catalogReactivity(elem, stateNames, observedObjectNames) {
+            const renderString = elem.render.toString().replace(/\s/g, "");
+        
+            const regex = /this\.([a-zA-Z0-9_$]+)/g;
+            let match;
+            let matches = [];
+        
+            while ((match = regex.exec(renderString)) !== null) {
+                matches.push({index: match.index, identifier: match[1]});
+            }
+
+            let foundReactives = []
+        
+            matches.forEach(match => {
+                let {index: statePos, identifier} = match;
+        
+                if (stateNames.includes(identifier) || observedObjectNames.includes(identifier)) {
+                    let charBefore = renderString[statePos - 1];
+        
+                    if (charBefore === "(") {
+                        function getIdentifier() {
+                            let startIndex = statePos - 2;
+                            let identifier = '';
+
+                            while (startIndex >= 0 && /^[a-zA-Z0-9_$]$/.test(renderString[startIndex])) {
+                                identifier = renderString[startIndex] + identifier;
+                                startIndex--;
+                            }
+                            return identifier
+                        }
+
+                        function getExpression(renderString, startPos) {
+                            let endIndex = startPos;
+                            while (endIndex < renderString.length && ![')', ','].includes(renderString[endIndex])) {
+                                endIndex++;
+                            }
+                        
+                            return renderString.substring(startPos, endIndex).trim();
+                        }
+
+                        function containsOperators(expression) {
+                            const operatorRegex = /[+\-*/%=&|<>!^]/;
+                            return operatorRegex.test(expression);
+                        }
+
+                        let identifier = getIdentifier()
+                        let expression = getExpression(renderString, statePos)
+                        let operators = containsOperators(expression)
+
+                        foundReactives.push([identifier, expression, operators])
+                    } else {
+                        console.log("Variable or other usage at position:", statePos);
+                    }
+        
+                    if (observedObjectNames.includes(identifier)) {
+                    } else if (stateNames.includes(identifier)) {
+                    }
+                }
+            });
+
+            elem.reactives = foundReactives
+        }
+
+        catalogReactivity(elem, stateNames, observedObjectNames)
+
         function makeState(elem, stateNames, params) {
             elem._observers = {}
 
@@ -370,7 +442,7 @@ window.Registry = class Registry {
             stateNames.forEach(name => {
                 const backingFieldName = `_${name}`;
                 elem._observers[name] = new Map()
-            
+
                 Object.defineProperty(elem, name, {
                     set: function(newValue) {
                         elem[backingFieldName] = newValue;
@@ -386,8 +458,12 @@ window.Registry = class Registry {
                         }
                     },
                     get: function() {
-                        Registry.lastState = [name, elem[backingFieldName]]
-                        return elem[backingFieldName];
+                        let rendering = window.rendering[window.rendering.length - 1]
+                        let value = elem[backingFieldName]
+                        if(!rendering) return value
+                      
+                        Registry.lastState = [name, value]
+                        return value;
                     },
                     enumerable: true,
                     configurable: true
@@ -588,8 +664,8 @@ window.VStack = function (cb = () => {}) {
         div.classList.add("VStack")
         div.style.display = "flex"
         div.style.flexDirection = "column"
+        div.render = cb
         Registry.render(div)
-        cb()
         return div
     }
 }
@@ -716,6 +792,23 @@ HTMLElement.prototype.padding = function(direction, value) {
     return this
 }
 
+HTMLElement.prototype.margin = function(direction, value) {
+    if(!value) {
+        this.style.margin = direction;
+        Registry.initReactivity(this, ["style", "margin"], value);
+        return this
+    }
+
+    const directionName = `margin${direction.charAt(0).toUpperCase()}${direction.slice(1)}`;
+    if (typeof value === 'number') {
+        this.style[directionName] = `${value}px`;
+    } else {
+        this.style[directionName] = value;
+    }
+    Registry.initReactivity(this, ["style", directionName], value);
+    return this
+}
+
 HTMLElement.prototype.width = function(value, unit = "px") {
     this.style.width = value + unit
     Registry.initReactivity(this, ["style", "width"], value);
@@ -766,17 +859,6 @@ HTMLElement.prototype.yBottom = function(value, unit = "px") {
     checkStyle(this)
     this.style.bottom = value + unit
     Registry.initReactivity(this, ["style", "bottom"], value);
-    return this
-}
-
-HTMLElement.prototype.margin = function(direction, value) {
-    const directionName = `margin${direction.charAt(0).toUpperCase()}${direction.slice(1)}`;
-    if (typeof value === 'number') {
-        this.style[directionName] = `${value}px`;
-    } else {
-        this.style[directionName] = value;
-    }
-    Registry.initReactivity(this, ["style", directionName], value);
     return this
 }
 

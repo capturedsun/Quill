@@ -41,6 +41,91 @@ window.testSuites.push( class testObservedObject {
 
     // throw some sort of warning if a global OO is accessed without "this"
 
+    DefaultObservedObject() {
+        window.Form = class Form extends ObservedObject {
+            id
+            path
+            $canvasPosition
+        }
+
+        class File extends Shadow {
+            $$form = Form.create({id: "123", path: "/", canvasPosition: "25|25"})
+
+            render = () => {
+                p(this.form.path)
+            }
+        }
+
+        window.register(File, "file-1")
+        let file = window.File()
+
+        if(file.firstChild?.innerText !== "/") {
+            return "Path is not inside of paragraph tag"
+        }
+    }
+
+    ObservedObject() {
+        let Form = class Form extends ObservedObject {
+            id
+            $path
+            $canvasPosition
+        }
+
+        let object = Form.create({id: "123", path: "/", canvasPosition: "25|25"});
+
+        register(class File extends Shadow {
+            $$form
+        
+            render = () => {
+                p(this.form.path)
+            }
+        }, randomName("file"))
+
+        let file = File(object)
+
+        if(file.firstChild?.innerText !== "/") {
+            return "Path is not inside of paragraph tag"
+        }
+
+        object.path = "/asd"
+        if(file.form.path !== "/asd") {
+            return "Path did not change when changing original object"
+        }
+        if(file.firstChild?.innerText !== "/asd") {
+            return "Observed Object did not cause a reactive change"
+        }
+    }
+
+    ObservedObjectWithArray() {
+        let Form = class Form extends ObservedObject {
+            id
+            $children
+        }
+
+        let object = Form.create({id: "123", children: [{path: "berry"}, {path: "blue"}]});
+
+        register(class File extends Shadow {
+            $$form
+        
+            render = () => {
+                ForEach(this.form.children, (child) => {
+                    p(child.path)
+                })
+            }
+        }, randomName("file"))
+
+        let file = File(object)
+
+        if(file.firstChild?.innerText !== "berry" || file.children[1].innerText !== "blue") {
+            return "Paths did not render correctly in children"
+        }
+
+        file.form.children.push({path: "hello"})
+        if(file.children.length !== 3) {
+            return "No reactivity for adding children"
+        }
+    }
+
     NotExtensible() {
         return "not done"
     }

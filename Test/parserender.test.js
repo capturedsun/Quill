@@ -1,13 +1,19 @@
+
+/* 
+
+"(" is preceding character: el, el.attr, if, switch
+    el: the el is window.rendering
+    el.attr: 
+        find the function and attr in the string
+            if there are multiple instances of being used with this el, add to a list (and if no list then make it and we are first)
+    if: the el is window.rendering. rerender el
+    switch: the el is window.rendering. rerender el
+*/
+
 window.testSuites.push(
 
 
 class ParseRender {
-    // CopyTo() {
-    //     let str = "render=()=>{VStack(()=>{"
-    //     let ret = str.copyTo("{")
-
-    //     if(ret !== "render=()=>") return "Copy 1 failed!"
-    // }
 
     ParseRender() {
         class Sidebar extends Shadow {

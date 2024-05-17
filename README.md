@@ -25,6 +25,9 @@ document.body.append(
 Ternaries within render()
 Other statements within render()
 
+## Limitations:
+While rendering is underway, an element's state can only be accessed from within that element
+
 ## Boilerplate:
 - ```*html```: Type in an HTML file and select the suggestion to create HTML boilerplate. 
 - ```*element```: Type in a JS file and select the suggestion to create JS Custom Element boilerplate.
