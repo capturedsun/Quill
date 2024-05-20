@@ -98,5 +98,29 @@ window.testSuites.push( class testState {
             return "fail"
         }
     }
+
+    StateWorksWithCustomStyleFunctions() {
+        // reactive setting needs to use the actual style functions
+
+        register(class File extends Shadow {
+            $paraWidth = 16
+
+            render = () => {
+                p("guppy")
+                    .width(this.paraWidth)
+            }
+        
+            constructor() {
+                super()
+            }
+        }, randomName("file"))
+
+        const file = File()
+        file.paraWidth = 18
+        
+        if(file.firstChild.style.width !== "18px") {
+            return "Width did not reactively change!"
+        }
+    }
     
 })

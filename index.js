@@ -139,59 +139,9 @@ function getSafariVersion() {
 }
 
 /* REGISTER */
-class ObservedArray extends Array {
-    parent;
-    name;
-
-    constructor(arr = [], parent, name) {
-        super();
-        this.parent = parent
-        this.name = name
-        this.push(...arr);
-    }
-
-    triggerParent() {
-        this.parent[this.name] = this
-    }
-
-    push(...args) {
-        const result = super.push(...args);
-        this.triggerParent()
-        return result;
-    }
-
-    pop() {
-        const result = super.pop();
-        this.triggerParent()
-        return result;
-    }
-
-    shift() {
-        const result = super.shift();
-        this.triggerParent()
-        return result;
-    }
-
-    unshift(...args) {
-        const result = super.unshift(...args);
-        this.triggerParent()
-        return result;
-    }
-
-    splice(start, deleteCount, ...items) {
-        const removedItems = super.splice(start, deleteCount, ...items);
-        if (items.length > 0) {
-            console.log(`Inserted ${items.length} items:`, items);
-        }
-        if (removedItems.length > 0) {
-            console.log(`Removed ${removedItems.length} items:`, removedItems);
-        }
-        this.triggerParent()
-        return removedItems;
-    }
-}
 
 class ObservedObject {
+
     constructor() {
         this._observers = {}
     }
@@ -208,7 +158,7 @@ class ObservedObject {
                 Object.defineProperty(instance, key, {
                     set: function(newValue) {
                         if(Array.isArray(newValue) && newValue.parent === undefined) {
-                            instance[backingFieldName] = new ObservedArray(newValue, this, key)
+                            instance[backingFieldName] = new ObservedObject.ObservedArray(newValue, this, key)
                         } else {
                             instance[backingFieldName] = newValue;
                         }
@@ -249,6 +199,58 @@ class ObservedObject {
         })
 
         return instance
+    }
+
+    static ObservedArray = class ObservedArray extends Array {
+        parent;
+        name;
+    
+        constructor(arr = [], parent, name) {
+            super();
+            this.parent = parent
+            this.name = name
+            this.push(...arr);
+        }
+    
+        triggerParent() {
+            this.parent[this.name] = this
+        }
+    
+        push(...args) {
+            const result = super.push(...args);
+            this.triggerParent()
+            return result;
+        }
+    
+        pop() {
+            const result = super.pop();
+            this.triggerParent()
+            return result;
+        }
+    
+        shift() {
+            const result = super.shift();
+            this.triggerParent()
+            return result;
+        }
+    
+        unshift(...args) {
+            const result = super.unshift(...args);
+            this.triggerParent()
+            return result;
+        }
+    
+        splice(start, deleteCount, ...items) {
+            const removedItems = super.splice(start, deleteCount, ...items);
+            if (items.length > 0) {
+                console.log(`Inserted ${items.length} items:`, items);
+            }
+            if (removedItems.length > 0) {
+                console.log(`Removed ${removedItems.length} items:`, removedItems);
+            }
+            this.triggerParent()
+            return removedItems;
+        }
     }
 }
 
@@ -421,7 +423,7 @@ window.Registry = class Registry {
 
                         foundReactives.push([identifier, expression, operators])
                     } else {
-                        console.log("Variable or other usage at position:", statePos);
+                        // console.log("Variable or other usage at position:", statePos);
                     }
         
                     if (observedObjectNames.includes(identifier)) {

@@ -24,6 +24,7 @@ document.body.append(
 ## Needs Support:
 Ternaries within render()
 Other statements within render()
+Multiple-argument attributes in render()
 
 ## Limitations:
 While rendering is underway, an element's state can only be accessed from within that element
